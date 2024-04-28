@@ -6,7 +6,7 @@ from chromosome import Chromosome
 MUTATION_TYPE_PROB = 0.1 # Probabilidad de mutacion de tipo de transaccion en cromosoma
 MUTATION_INTERVAL_PROB = 0.1 # Probabilidad de mutacion en extremos del intervalo
 MIN_MAX_LIST = [] # Lista con los valores maximo y minimo por atributo - NO SE PUEDEN REBASAR
-
+MAX_PER_TYPE = [2,2] # Lista con el número de atributos máximo que queremos en antecedente y consecuente
 
 class Operators:
     @staticmethod
@@ -42,10 +42,15 @@ class Operators:
         for i in range(len(ind.transactions)):
             if random.random() < MUTATION_TYPE_PROB:
                 t_i  = ind.transactions[i]
+                print("Mutación en el gen: ", i)
                 if t_i == 0:
-                    t_i = random.choice([1,2])
+                    print(ind.counter_transaction_type)
+                    pmt = Operators.possible_mutation_types(ind.counter_transaction_type)
+                    t_i = random.choice(pmt)
+                    ind.counter_transaction_type[t_i-1] += 1 # El contador de número de transacciones del cromosoma sube
                 else:
-                    t_i = 0
+                    ind.counter_transaction_type[t_i-1] -= 1 # El contador de número de transacciones del cromosoma baja
+                    t_i = 0    
                 ind.transactions[i] = t_i
             if random.random() < MUTATION_INTERVAL_PROB:
                 ### MEJORAR, numero aleatorio entre 0 y .1
@@ -83,6 +88,24 @@ class Operators:
             sign1 = random.choice([1,-1])
             sign2 = random.choice([1,-1])
         return [sign1, sign2]
+    
+    @staticmethod
+    def possible_mutation_types(ls_count_transactions):
+        """
+        Dado el parámetro MAX_PER_TYPE, devuelve una lista con los valores posibles para la mutación de
+        la transacción, asegurándose así que no se superan los límites establecidos de atributos en el
+        antecedente y en el consecuente.        
+        """
+        if (ls_count_transactions[0] < MAX_PER_TYPE[0]) & (ls_count_transactions[1] < MAX_PER_TYPE[1]):
+            res = [1,2]
+        elif ls_count_transactions[0] < MAX_PER_TYPE[0]:
+            res = [1]
+        elif ls_count_transactions[1] < MAX_PER_TYPE[1]:
+            res = [2]
+        else:
+            res = [0]
+        print(res)
+        return res
 
 
 # Definir toolbox y registrando los operadores genéticos
@@ -97,20 +120,23 @@ MIN_MAX_LIST=ind1.intervals
 print("Antes del cruce:")
 print("Individuo 1 - Intervalos:", ind1.intervals)
 print("Individuo 1 - Transacciones:", ind1.transactions)
-print("Individuo 2 - Intervalos:", ind2.intervals)
-print("Individuo 2 - Transacciones:", ind2.transactions)
+#print("Individuo 2 - Intervalos:", ind2.intervals)
+#print("Individuo 2 - Transacciones:", ind2.transactions)
 
-
+'''
 ind_cruce = toolbox.mate(ind1, ind2)
 
 print("\nDespués del cruce:")
 print("Individuo Cruce - Intervalos:", ind_cruce.intervals)
 print("Individuo Cruce - Transacciones:", ind_cruce.transactions)
+'''
 
 print("\nDespués de la mutación:")
 ind1 = toolbox.mutate(ind1)
-ind2 = toolbox.mutate(ind2)
+#ind2 = toolbox.mutate(ind2)
 print("Individuo 1 - Intervalos:", ind1.intervals)
 print("Individuo 1 - Transacciones:", ind1.transactions)
+'''
 print("Individuo 2 - Intervalos:", ind2.intervals)
 print("Individuo 2 - Transacciones:", ind2.transactions)
+'''
