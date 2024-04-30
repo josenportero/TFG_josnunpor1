@@ -1,6 +1,6 @@
 import random
 from deap import base, creator, tools
-from chromosome import Chromosome
+from chromosome import Chromosome 
 
 ###### CONSTANTES A DEFINIR ########
 MUTATION_TYPE_PROB = 0.1 # Probabilidad de mutacion de tipo de transaccion en cromosoma
@@ -107,7 +107,8 @@ class Operators:
         print(res)
         return res
 
-
+'''
+##### PARA COMPROBAR EL FUNCIONAMIENTO DE LOS METODOS
 # Definir toolbox y registrando los operadores genéticos
 toolbox = base.Toolbox()
 toolbox.register("mate", Operators.crossover)
@@ -123,20 +124,20 @@ print("Individuo 1 - Transacciones:", ind1.transactions)
 #print("Individuo 2 - Intervalos:", ind2.intervals)
 #print("Individuo 2 - Transacciones:", ind2.transactions)
 
-'''
+
 ind_cruce = toolbox.mate(ind1, ind2)
 
 print("\nDespués del cruce:")
 print("Individuo Cruce - Intervalos:", ind_cruce.intervals)
 print("Individuo Cruce - Transacciones:", ind_cruce.transactions)
-'''
+
 
 print("\nDespués de la mutación:")
 ind1 = toolbox.mutate(ind1)
 #ind2 = toolbox.mutate(ind2)
 print("Individuo 1 - Intervalos:", ind1.intervals)
 print("Individuo 1 - Transacciones:", ind1.transactions)
-'''
+
 print("Individuo 2 - Intervalos:", ind2.intervals)
 print("Individuo 2 - Transacciones:", ind2.transactions)
 '''

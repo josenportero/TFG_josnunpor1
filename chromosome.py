@@ -1,10 +1,11 @@
 import random
 from deap import base, creator, tools
+import pandas as pd
+from metrics import Metrics
 
 
 #### CONSTANTES DEFINIDAS
 MAX_PER_TYPE = [2,2] # Lista con el número de atributos máximo que queremos en antecedente y consecuente
-
 
 class Chromosome:
     def __init__(self, intervals=None, transactions=None):
@@ -42,13 +43,16 @@ class Chromosome:
                 contador[t-1]+=1
         return contador
 
-# Función de evaluación
-def chromosome_eval(cromosoma):
-    # TEMPORAL - Definir fitness mas claramente aqui en vez de con creator
-    return sum(cromosoma.counter_transaction_type)
-
+    # Función de evaluación
+    def chromosome_eval(self, dataset, w=[1.,1.,1.,1.,1.]):
+        # TEMPORAL - Definir fitness mas claramente aqui en vez de con creator
+        return Metrics.fitness(self, dataset, w)
+    
+    
+'''
 # Definiciones creator DEAP
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+creator.create("Individual", list, fitness=creator.FitnessMax)
 creator.create("ChromosomeDEAP", Chromosome, fitness=creator.FitnessMax)
 
 # Toolbox para configurar los algoritmos genéticos
@@ -60,10 +64,21 @@ toolbox = base.Toolbox()
 toolbox.register("chromosome", Chromosome.create_chromosome, n=10, min_val=0., max_val=100.)
 toolbox.register("population", tools.initRepeat, list, toolbox.chromosome, 20) # posteriormente para crear una poblacion
 
-# Definir función de evaluación
-toolbox.register("evaluate", chromosome_eval)
 
 # Ejemplo de uso
+####### DATOS 'DE JUGUETE' PARA COMPROBACIÓN DE LAS MÉTRICAS
+data = {
+    'A': [1.2, 2.3, 3.4, 4.5, 5.6],
+    'B': [7.8, 8.9, 9.0, 10.1, 11.2],
+    'C': [13.4, 14.5, 15.6, 16.7, 17.8],
+    'D': [19.0, 20.1, 21.2, 22.3, 23.4],
+    'E': [25.6, 26.7, 27.8, 28.9, 30.0]
+}
+
+df = pd.DataFrame(data)
+
+
+toolbox.register("evaluate", Chromosome.chromosome_eval, dataset=df)
 
 cromosoma_ejemplo = toolbox.chromosome()
 aptitud_ejemplo = toolbox.evaluate(cromosoma_ejemplo)
@@ -75,3 +90,4 @@ print("Aptitud del cromosoma:", aptitud_ejemplo)
 
 #poblacion = toolbox.population()
 #print(poblacion)
+'''

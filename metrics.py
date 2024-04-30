@@ -1,5 +1,5 @@
 from deap import base, creator, tools
-from chromosome import Chromosome
+#from chromosome import Chromosome # para los tests
 import pandas as pd
 
 class Metrics:
@@ -130,11 +130,12 @@ class Metrics:
         - agg: Lista de booleanos que indica si cada instancia del dataset está cubierta por alguna regla
         de las contenidas en la lista.
         """
-        agg = [False for _ in range(dataset.shape[0])]
+        n = dataset.shape[0]
+        agg = [False for _ in range(n)]
         for rule in rules:
             cov = Metrics.covered_by_rule(dataset, rule.intervals, rule.transactions)
             agg = [x or y for x,y in zip(cov, agg)]
-        return agg
+        return sum(agg)/n
     
     def calculate_certainty_factor(dataset, individual_values, individual_attribute_types):
         """
@@ -159,33 +160,16 @@ class Metrics:
         else:
             cert = 0.
         return cert
+    
+    def fitness(chromosome, dataset,  w):
+        sup = Metrics.calculate_support(dataset, chromosome.intervals, chromosome.transactions)
+        conf = Metrics.calculate_confidence(dataset, chromosome.intervals, chromosome.transactions)
+        recov = Metrics.measure_recovered(dataset, [chromosome])
+        nAttrib = sum(chromosome.counter_transaction_type)
+        grouped_ls = [[chromosome.intervals[i], chromosome.intervals[i + 1]] for i in range(0, len(chromosome.intervals), 2)]
+        agg = [0 for _ in range(len(grouped_ls))]
+        for i in range(len(grouped_ls)):
+            agg[i] = grouped_ls[i][1]-grouped_ls[i][0]
+        ampl = sum(agg)/len(grouped_ls)
+        return w[0]*sup[2] + w[1]*conf - w[2]*recov + w[3]*nAttrib - w[4]*ampl
 
-
-####### DATOS 'DE JUGUETE' PARA COMPROBACIÓN DE LAS MÉTRICAS
-data = {
-    'A': [1.2, 2.3, 3.4, 4.5, 5.6],
-    'B': [7.8, 8.9, 9.0, 10.1, 11.2],
-    'C': [13.4, 14.5, 15.6, 16.7, 17.8],
-    'D': [19.0, 20.1, 21.2, 22.3, 23.4],
-    'E': [25.6, 26.7, 27.8, 28.9, 30.0]
-}
-
-df = pd.DataFrame(data)
-
-# Creación de población de cromosomas para comprobar las métricas
-population = [Chromosome.create_chromosome(5, 0, 30) for _ in range(10)]  # Creamos 1 cromosomas de ejemplo
-
-i=0
-for p in population:
-    i+=1
-    print("\n Cromosoma n = ", i)
-    print("Intervalos: ", p.intervals)
-    print("Transacciones", p.transactions)
-    print("Soporte: ", Metrics.calculate_support(df, p.intervals, p.transactions))
-    print("Confianza de la regla: ", Metrics.calculate_confidence(df, p.intervals, p.transactions))
-    print("Lift: ", Metrics.calculate_lift(df, p.intervals, p.transactions))
-    print("Instancias que 'cubre' la regla: ", Metrics.covered_by_rule(df, p.intervals, p.transactions))
-    print("Factor de certeza normalizado: ", Metrics.calculate_certainty_factor(df, p.intervals, p.transactions))
-
-print('\n======================================')
-print("'Medida recuperada' por las reglas: ", Metrics.measure_recovered(df, population))
