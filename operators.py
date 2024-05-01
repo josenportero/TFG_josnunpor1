@@ -3,8 +3,8 @@ from deap import base, creator, tools
 from chromosome import Chromosome 
 
 ###### CONSTANTES A DEFINIR ########
-MUTATION_TYPE_PROB = 0.1 # Probabilidad de mutacion de tipo de transaccion en cromosoma
-MUTATION_INTERVAL_PROB = 0.1 # Probabilidad de mutacion en extremos del intervalo
+MUTATION_TYPE_PROB = 0.33 # Probabilidad de mutacion de tipo de transaccion en cromosoma
+MUTATION_INTERVAL_PROB = 0.33 # Probabilidad de mutacion en extremos del intervalo
 MIN_MAX_LIST = [] # Lista con los valores maximo y minimo por atributo - NO SE PUEDEN REBASAR
 MAX_PER_TYPE = [2,2] # Lista con el número de atributos máximo que queremos en antecedente y consecuente
 
@@ -37,14 +37,14 @@ class Operators:
         return Chromosome(intervalos, transacciones)
 
     @staticmethod
-    def mutation(ind):
+    def mutation(ind, dataset):
         # Mutación tipo
         for i in range(len(ind.transactions)):
             if random.random() < MUTATION_TYPE_PROB:
                 t_i  = ind.transactions[i]
-                print("Mutación en el gen: ", i)
+                #print("Mutación en el gen: ", i)
                 if t_i == 0:
-                    print(ind.counter_transaction_type)
+                    #print(ind.counter_transaction_type)
                     pmt = Operators.possible_mutation_types(ind.counter_transaction_type)
                     t_i = random.choice(pmt)
                     ind.counter_transaction_type[t_i-1] += 1 # El contador de número de transacciones del cromosoma sube
@@ -54,8 +54,9 @@ class Operators:
                 ind.transactions[i] = t_i
             if random.random() < MUTATION_INTERVAL_PROB:
                 ### MEJORAR, numero aleatorio entre 0 y .1
+                print("true")
                 dif = 0.05*(ind.intervals[2*i+1]-ind.intervals[2*i])
-                ls_sign = Operators.check_boundaries(ind, i)
+                ls_sign = Operators.check_boundaries(ind, i, dataset)
                 sign1 = ls_sign[0]
                 sign2 = ls_sign[1]
                 tipo_mut = random.choice([0,1,2])
@@ -69,19 +70,21 @@ class Operators:
         return ind
     
     @staticmethod
-    def check_boundaries(ind, i):
+    def check_boundaries(ind, i, dataset):
         ''''
         Checkea que al realizar el cambio de extremos en el intervalo del atributo,
         no nos salimos del intervalo deseado.
         '''
+        min_max_ls = Operators.calculate_ranges(dataset)
+        print("min max list:", min_max_ls)
         dif = 0.05*(ind.intervals[2*i+1]-ind.intervals[2*i])
-        if ind.intervals[2*i]-dif < MIN_MAX_LIST[2*i] and ind.intervals[2*i+1]+dif > MIN_MAX_LIST[2*i+1]:
+        if ind.intervals[2*i]-dif < min_max_ls[2*i] and ind.intervals[2*i+1]+dif > min_max_ls[2*i+1]:
             sign1 = +1       
             sign2 = -1
-        elif ind.intervals[2*i]-dif < MIN_MAX_LIST[2*i]:
+        elif ind.intervals[2*i]-dif < min_max_ls[2*i]:
             sign1= +1
             sign2 = random.choice([1,-1])
-        elif ind.intervals[2*i+1]+dif > MIN_MAX_LIST[2*i+1]:
+        elif ind.intervals[2*i+1]+dif > min_max_ls[2*i+1]:
             sign1 = random.choice([1,-1])
             sign2 = -1
         else:
@@ -107,37 +110,27 @@ class Operators:
         print(res)
         return res
 
-'''
-##### PARA COMPROBAR EL FUNCIONAMIENTO DE LOS METODOS
-# Definir toolbox y registrando los operadores genéticos
-toolbox = base.Toolbox()
-toolbox.register("mate", Operators.crossover)
-toolbox.register("mutate", Operators.mutation)
+    def calculate_ranges(dataset):
+        '''
+        Recibida una población inicial, este método calcula cuáles son los rangos admisibles entre los
+        que se moverá cada atributo.
 
-# Ejemplo de uso de los operadores
-ind1 = Chromosome.create_chromosome(10, 0., 100.)
-ind2 = Chromosome.create_chromosome(10, 0., 100.)
-MIN_MAX_LIST=ind1.intervals
-print("Antes del cruce:")
-print("Individuo 1 - Intervalos:", ind1.intervals)
-print("Individuo 1 - Transacciones:", ind1.transactions)
-#print("Individuo 2 - Intervalos:", ind2.intervals)
-#print("Individuo 2 - Transacciones:", ind2.transactions)
+        Entrada:
+        - population: Una lista de cromosomas (objetos Chromosome) que representan la población inicial.
 
+        Salida:
+        - lista que contiene los rangos admisibles para cada atributo en la población.
+        Cada rango se representa como una tupla (límite_inferior, límite_superior).
+        '''
+        min_max_dict = dict()  # Diccionario para almacenar los valores mínimos y máximos por columna
 
-ind_cruce = toolbox.mate(ind1, ind2)
+        for column in dataset.columns:
+            # Calcula el mínimo y el máximo de la columna actual
+            min_value = dataset[column].min()
+            max_value = dataset[column].max()
 
-print("\nDespués del cruce:")
-print("Individuo Cruce - Intervalos:", ind_cruce.intervals)
-print("Individuo Cruce - Transacciones:", ind_cruce.transactions)
+            # Almacena los valores en el diccionario
+            min_max_dict[column] = [min_value, max_value]
 
+        return [item for sublist in list(min_max_dict.values()) for item in sublist]
 
-print("\nDespués de la mutación:")
-ind1 = toolbox.mutate(ind1)
-#ind2 = toolbox.mutate(ind2)
-print("Individuo 1 - Intervalos:", ind1.intervals)
-print("Individuo 1 - Transacciones:", ind1.transactions)
-
-print("Individuo 2 - Intervalos:", ind2.intervals)
-print("Individuo 2 - Transacciones:", ind2.transactions)
-'''

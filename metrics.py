@@ -44,10 +44,10 @@ class Metrics:
                         verifyAnt.append(False)
                     elif individual_attribute_types[c] == 2:
                         verifyCons.append(False)
-            # When verifyAnt == True for all the columns, the support of the antecedent of the rule increases by 1
-            #print(verifyAnt)
-            #print(verifyCons)
-            if all(verifyAnt): 
+                # When verifyAnt == True for all the columns, the support of the antecedent of the rule increases by 1
+            print(verifyAnt)
+            print(verifyCons)
+            if all(verifyAnt):       
                 support_ant += 1
                 # If verifyCons  == True for all the columns the rule support increases by 1
                 if all(verifyCons):
@@ -55,6 +55,7 @@ class Metrics:
             # For each instance, if verifyCons  == True for all the columns the consequent support increases by 1
             if all(verifyCons):
                 support_cons += 1
+
         support.append(support_ant/len(data.index))
         support.append(support_cons/len(data.index))
         support.append(support_rule/len(data.index))
@@ -162,6 +163,7 @@ class Metrics:
         return cert
     
     def fitness(chromosome, dataset,  w):
+        # PENALIZACIÓN SI UN ELEMENTO TIENE EXTREMO DEL INTERVALO FUERA DEL RANGO EN EL DATASET?
         sup = Metrics.calculate_support(dataset, chromosome.intervals, chromosome.transactions)
         conf = Metrics.calculate_confidence(dataset, chromosome.intervals, chromosome.transactions)
         recov = Metrics.measure_recovered(dataset, [chromosome])
