@@ -45,8 +45,8 @@ class Metrics:
                     elif individual_attribute_types[c] == 2:
                         verifyCons.append(False)
                 # When verifyAnt == True for all the columns, the support of the antecedent of the rule increases by 1
-            print(verifyAnt)
-            print(verifyCons)
+            #print(verifyAnt)
+            #print(verifyCons)
             if all(verifyAnt):       
                 support_ant += 1
                 # If verifyCons  == True for all the columns the rule support increases by 1
@@ -112,11 +112,17 @@ class Metrics:
         cov=[]
         for i in dataset.index:
             # For each column verify if the value of that instance is in the range given by the individual
-            for c in range(len(dataset.columns)-1):
+            for c in range(len(dataset.columns)):
+                cov_aux=[]
                 res=True
                 if individual_attribute_types[c]!=0:
-                    res=res&(dataset.iloc[i,c] >= individual_values[c*2]) & (dataset.iloc[i,c] <= individual_values[c*2+1])
-            cov.append(res)
+                    print('Extremo inferior = ', individual_values[c*2], 'Dato= ', dataset.iloc[i,c], ', Extremo superior= ', individual_values[c*2+1])
+                    print(individual_values[c*2]<=dataset.iloc[i,c]<=individual_values[c*2+1])
+                    res=(individual_values[c*2]<=dataset.iloc[i,c]<=individual_values[c*2+1])&res
+                cov_aux.append(res)
+            #print(cov_aux)
+            cov.append(all(cov_aux))
+            #print(cov)    
         return cov
 
     def measure_recovered(dataset, rules):

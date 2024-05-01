@@ -107,7 +107,7 @@ class Operators:
             res = [2]
         else:
             res = [0]
-        print(res)
+        #print(res)
         return res
 
     def calculate_ranges(dataset):

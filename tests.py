@@ -49,6 +49,7 @@ class Tests:
         print("Confianza de la regla: ", Metrics.calculate_confidence(dataset, c.intervals, c.transactions))
         print("Lift: ", Metrics.calculate_lift(dataset, c.intervals, c.transactions))
         print("Instancias que 'cubre' la regla: ", Metrics.covered_by_rule(dataset, c.intervals, c.transactions))
+        print("Recov: ", Metrics.measure_recovered(dataset, [c]))
         print("Factor de certeza normalizado: ", Metrics.calculate_certainty_factor(dataset, c.intervals, c.transactions))
         print('Fitness: ', Metrics.fitness(c, dataset, w))
 
