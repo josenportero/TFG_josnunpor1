@@ -45,7 +45,7 @@ class Operators:
                 #print("Mutación en el gen: ", i)
                 if t_i == 0:
                     #print(ind.counter_transaction_type)
-                    pmt = Operators.possible_mutation_types(ind.counter_transaction_type)
+                    pmt = Operators.possible_mutation_types(ind.counter_transaction_type, dataset)
                     t_i = random.choice(pmt)
                     ind.counter_transaction_type[t_i-1] += 1 # El contador de número de transacciones del cromosoma sube
                 else:
@@ -76,7 +76,7 @@ class Operators:
         no nos salimos del intervalo deseado.
         '''
         min_max_ls = Operators.calculate_ranges(dataset)
-        print("min max list:", min_max_ls)
+        #print("min max list:", min_max_ls)
         dif = 0.05*(ind.intervals[2*i+1]-ind.intervals[2*i])
         if ind.intervals[2*i]-dif < min_max_ls[2*i] and ind.intervals[2*i+1]+dif > min_max_ls[2*i+1]:
             sign1 = +1       
@@ -93,25 +93,34 @@ class Operators:
         return [sign1, sign2]
     
     @staticmethod
-    def possible_mutation_types(ls_count_transactions):
+    def possible_mutation_types(ls_count_transactions, dataset):
         """
         Dado el parámetro MAX_PER_TYPE, devuelve una lista con los valores posibles para la mutación de
         la transacción, asegurándose así que no se superan los límites establecidos de atributos en el
         antecedente y en el consecuente.        
         """
-        if (ls_count_transactions[0] < MAX_PER_TYPE[0]) & (ls_count_transactions[1] < MAX_PER_TYPE[1]):
+        if (ls_count_transactions[0] < dataset.max_per_type[0]) & (ls_count_transactions[1] < dataset.max_per_type[1]):
             res = [1,2]
-        elif ls_count_transactions[0] < MAX_PER_TYPE[0]:
+        elif ls_count_transactions[0] < dataset.max_per_type[0]:
             res = [1]
-        elif ls_count_transactions[1] < MAX_PER_TYPE[1]:
+        elif ls_count_transactions[1] < dataset.max_per_type[1]:
             res = [2]
         else:
             res = [0]
         #print(res)
         return res
-
+    
     def calculate_ranges(dataset):
-        '''
+        ls = []
+        for c in dataset.column_ranges:
+            if dataset.column_ranges[c]['type']=='Quantitative':
+                ls.append(dataset.column_ranges[c]['min'])
+                ls.append(dataset.column_ranges[c]['max'])
+        return ls
+
+'''
+    def calculate_ranges(dataset):
+        """
         Recibida una población inicial, este método calcula cuáles son los rangos admisibles entre los
         que se moverá cada atributo.
 
@@ -121,7 +130,7 @@ class Operators:
         Salida:
         - lista que contiene los rangos admisibles para cada atributo en la población.
         Cada rango se representa como una tupla (límite_inferior, límite_superior).
-        '''
+        """
         min_max_dict = dict()  # Diccionario para almacenar los valores mínimos y máximos por columna
 
         for column in dataset.columns:
@@ -133,4 +142,4 @@ class Operators:
             min_max_dict[column] = [min_value, max_value]
 
         return [item for sublist in list(min_max_dict.values()) for item in sublist]
-
+'''

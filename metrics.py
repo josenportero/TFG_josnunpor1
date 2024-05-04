@@ -23,15 +23,15 @@ class Metrics:
         support = []
         #print(data)
         # Iterate over instances
-        for i in data.index:
+        for i in data.dataset.index:
             verifyAnt = [] 
             verifyCons = []
             # For each column verify if the value of that instance is in the range given by the individual
-            for c in range(len(data.columns)):
+            for c in range(len(data.dataset.columns)):
                 # We check that te value in the Dataframe's column is in the range specified by the Chromosome
                 #print(c)
                 #print(individual_values[c*2], " + ", individual_values[2*c+1])
-                if (data.iloc[i,c] >= individual_values[c*2]) & (data.iloc[i,c] <= individual_values[c*2+1]):
+                if (data.dataset.iloc[i,c] >= individual_values[c*2]) & (data.dataset.iloc[i,c] <= individual_values[c*2+1]):
                     # We only care about a rule when transaction is different than null, i.e., transaction[c]!=0 
                     if individual_attribute_types[c] == 1:
                         # In this case, the rule is in the antecedent
@@ -56,13 +56,13 @@ class Metrics:
             if all(verifyCons):
                 support_cons += 1
 
-        support.append(support_ant/len(data.index))
-        support.append(support_cons/len(data.index))
-        support.append(support_rule/len(data.index))
+        support.append(support_ant/len(data.dataset.index))
+        support.append(support_cons/len(data.dataset.index))
+        support.append(support_rule/len(data.dataset.index))
         return support
 
 
-    def calculate_confidence(dataset, individual_values, individual_attribute_types):
+    def calculate_confidence(data, individual_values, individual_attribute_types):
         """
         Calcula la confianza de una regla X => Y en un conjunto de datos.
         -----------------------------------------------------------------
@@ -76,10 +76,10 @@ class Metrics:
         - confidence: Confianza en la regla X => Y ~ Probabilidad de que las reglas que contienen a X contengan,
         a su vez, a Y.
         """
-        soportes = Metrics.calculate_support(dataset, individual_values, individual_attribute_types)
+        soportes = Metrics.calculate_support(data, individual_values, individual_attribute_types)
         return soportes[2]/soportes[0] if soportes[0]!=0. else 0.
 
-    def calculate_lift(dataset, individual_values, individual_attribute_types):
+    def calculate_lift(data, individual_values, individual_attribute_types):
         """
         Calcula el lift de la regla X => Y en el dataset.
         -------------------------------------------------
@@ -93,10 +93,10 @@ class Metrics:
         - lift: Lift de la regla X => Y ~ Cuántas veces son más probables X e Y juntas en el dataset de lo esperado,
         asumiendo que X e Y son ocurrencias estadísticamente independientes
         """
-        soportes = Metrics.calculate_support(dataset, individual_values, individual_attribute_types)
+        soportes = Metrics.calculate_support(data, individual_values, individual_attribute_types)
         return soportes[2]/(soportes[0]*soportes[1]) if (soportes[0]!=0.) & (soportes[1]!=0.) else 0.
 
-    def covered_by_rule(dataset, individual_values, individual_attribute_types):
+    def covered_by_rule(data, individual_values, individual_attribute_types):
         """
         Determina qué ejemplos determinados del dataset son cubiertos o no por una regla.
         ---------------------------------------------------------------------------------
@@ -110,22 +110,22 @@ class Metrics:
         - covered: Lista de booleanos que indica si cada instancia del dataset está cubierta por la regla.
         """
         cov=[]
-        for i in dataset.index:
+        for i in data.dataset.index:
             # For each column verify if the value of that instance is in the range given by the individual
-            for c in range(len(dataset.columns)):
+            for c in range(len(data.dataset.columns)):
                 cov_aux=[]
                 res=True
                 if individual_attribute_types[c]!=0:
-                    print('Extremo inferior = ', individual_values[c*2], 'Dato= ', dataset.iloc[i,c], ', Extremo superior= ', individual_values[c*2+1])
-                    print(individual_values[c*2]<=dataset.iloc[i,c]<=individual_values[c*2+1])
-                    res=(individual_values[c*2]<=dataset.iloc[i,c]<=individual_values[c*2+1])&res
+                    #print('Extremo inferior = ', individual_values[c*2], 'Dato= ', dataset.iloc[i,c], ', Extremo superior= ', individual_values[c*2+1])
+                    #print(individual_values[c*2]<=dataset.iloc[i,c]<=individual_values[c*2+1])
+                    res=(individual_values[c*2]<=data.dataset.iloc[i,c]<=individual_values[c*2+1])&res
                 cov_aux.append(res)
             #print(cov_aux)
             cov.append(all(cov_aux))
             #print(cov)    
         return cov
 
-    def measure_recovered(dataset, rules):
+    def measure_recovered(data, rules):
         """
         Calcula las regiones recuperadas por las reglas en un conjunto de datos.
         ------------------------------------------------------------------------
@@ -137,14 +137,14 @@ class Metrics:
         - agg: Lista de booleanos que indica si cada instancia del dataset está cubierta por alguna regla
         de las contenidas en la lista.
         """
-        n = dataset.shape[0]
+        n = data.dataset.shape[0]
         agg = [False for _ in range(n)]
         for rule in rules:
-            cov = Metrics.covered_by_rule(dataset, rule.intervals, rule.transactions)
+            cov = Metrics.covered_by_rule(data, rule.intervals, rule.transactions)
             agg = [x or y for x,y in zip(cov, agg)]
         return sum(agg)/n
     
-    def calculate_certainty_factor(dataset, individual_values, individual_attribute_types):
+    def calculate_certainty_factor(data, individual_values, individual_attribute_types):
         """
         Calcula el factor de certeza para una regla X => Y en un conjunto de datos.
 
@@ -158,8 +158,8 @@ class Metrics:
         - cert: Valor del factor de certeza para la regla X => Y.
         """
         cert = 0.
-        conf_XY = Metrics.calculate_confidence(dataset, individual_values, individual_attribute_types)
-        sup_Y = Metrics.calculate_support(dataset, individual_values, individual_attribute_types)[2]
+        conf_XY = Metrics.calculate_confidence(data, individual_values, individual_attribute_types)
+        sup_Y = Metrics.calculate_support(data, individual_values, individual_attribute_types)[2]
         if conf_XY > sup_Y:
             cert = (conf_XY - sup_Y)/(1-sup_Y)
         elif conf_XY < sup_Y:
