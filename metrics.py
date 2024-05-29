@@ -9,7 +9,7 @@ class Metrics:
         Calcula el soporte para reglas de asociación en un conjunto de datos.
         ---------------------------------------------------------------------
         Entradas:
-        - data: DataFrame que contiene el conjunto de datos.
+        - data: dataset que contiene el conjunto de datos.
         - individual_values: Lista de valores individuales que definen los intervalos de los atributos en la regla.
         - individual_attribute_types: Lista de tipos de atributos (0 si no está en la regla,
           1 para antecedente, 2 para consecuente).
@@ -23,15 +23,15 @@ class Metrics:
         support = []
         #print(data)
         # Iterate over instances
-        for i in data.dataset.index:
+        for i in data.dataframe.index:
             verifyAnt = [] 
             verifyCons = []
             # For each column verify if the value of that instance is in the range given by the individual
-            for c in range(len(data.dataset.columns)):
+            for c in range(len(data.dataframe.columns)):
                 # We check that te value in the Dataframe's column is in the range specified by the Chromosome
                 #print(c)
                 #print(individual_values[c*2], " + ", individual_values[2*c+1])
-                if (data.dataset.iloc[i,c] >= individual_values[c*2]) & (data.dataset.iloc[i,c] <= individual_values[c*2+1]):
+                if (data.dataframe.iloc[i,c] >= individual_values[c*2]) & (data.dataframe.iloc[i,c] <= individual_values[c*2+1]):
                     # We only care about a rule when transaction is different than null, i.e., transaction[c]!=0 
                     if individual_attribute_types[c] == 1:
                         # In this case, the rule is in the antecedent
@@ -56,9 +56,9 @@ class Metrics:
             if all(verifyCons):
                 support_cons += 1
 
-        support.append(support_ant/len(data.dataset.index))
-        support.append(support_cons/len(data.dataset.index))
-        support.append(support_rule/len(data.dataset.index))
+        support.append(support_ant/len(data.dataframe.index))
+        support.append(support_cons/len(data.dataframe.index))
+        support.append(support_rule/len(data.dataframe.index))
         return support
 
 
@@ -110,15 +110,15 @@ class Metrics:
         - covered: Lista de booleanos que indica si cada instancia del dataset está cubierta por la regla.
         """
         cov=[]
-        for i in data.dataset.index:
+        for i in data.dataframe.index:
             # For each column verify if the value of that instance is in the range given by the individual
-            for c in range(len(data.dataset.columns)):
+            for c in range(len(data.dataframe.columns)):
                 cov_aux=[]
                 res=True
                 if individual_attribute_types[c]!=0:
                     #print('Extremo inferior = ', individual_values[c*2], 'Dato= ', dataset.iloc[i,c], ', Extremo superior= ', individual_values[c*2+1])
                     #print(individual_values[c*2]<=dataset.iloc[i,c]<=individual_values[c*2+1])
-                    res=(individual_values[c*2]<=data.dataset.iloc[i,c]<=individual_values[c*2+1])&res
+                    res=(individual_values[c*2]<=data.dataframe.iloc[i,c]<=individual_values[c*2+1])&res
                 cov_aux.append(res)
             #print(cov_aux)
             cov.append(all(cov_aux))
@@ -137,7 +137,7 @@ class Metrics:
         - agg: Lista de booleanos que indica si cada instancia del dataset está cubierta por alguna regla
         de las contenidas en la lista.
         """
-        n = data.dataset.shape[0]
+        n = data.dataframe.shape[0]
         agg = [False for _ in range(n)]
         for rule in rules:
             cov = Metrics.covered_by_rule(data, rule.intervals, rule.transactions)
@@ -169,15 +169,24 @@ class Metrics:
         return cert
     
     def fitness(chromosome, dataset,  w):
-        # PENALIZACIÓN SI UN ELEMENTO TIENE EXTREMO DEL INTERVALO FUERA DEL RANGO EN EL DATASET?
-        sup = Metrics.calculate_support(dataset, chromosome.intervals, chromosome.transactions)
-        conf = Metrics.calculate_confidence(dataset, chromosome.intervals, chromosome.transactions)
+        """
+        Cálculo de la función fitness tal y como aparece en el paper 'QARGA'
+        """
+        aux = chromosome.support
+        print('Cromosoma: ',chromosome.calculate_support(dataset))
+        print('Aux: ', aux)
+        sup = aux[2]
+        conf = aux[2]/aux[0] if aux[0]!=0. else 0.
         recov = Metrics.measure_recovered(dataset, [chromosome])
         nAttrib = sum(chromosome.counter_transaction_type)
         grouped_ls = [[chromosome.intervals[i], chromosome.intervals[i + 1]] for i in range(0, len(chromosome.intervals), 2)]
         agg = [0 for _ in range(len(grouped_ls))]
         for i in range(len(grouped_ls)):
-            agg[i] = grouped_ls[i][1]-grouped_ls[i][0]
-        ampl = sum(agg)/len(grouped_ls)
-        return w[0]*sup[2] + w[1]*conf - w[2]*recov + w[3]*nAttrib - w[4]*ampl
-
+            if chromosome.transactions[i]!=0:
+                agg[i] = grouped_ls[i][1]-grouped_ls[i][0]
+        non_zero_t = (len(agg)-sum(1 for i in range(len(agg)) if agg[i]==0))
+        ampl = sum(agg)/non_zero_t if non_zero_t != 0. else 0.
+        #print('nAttrib: ',nAttrib)
+        #print(agg)
+        #return w[0]*sup[2] + w[1]*conf - w[2]*recov + w[3]*nAttrib - w[4]*ampl
+        return w*conf

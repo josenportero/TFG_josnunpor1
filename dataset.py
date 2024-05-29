@@ -1,16 +1,16 @@
 import pandas as pd
 
 class Dataset:
-    def __init__(self, dataframe):
-        self.dataset = dataframe
+    def __init__(self, dataset):
+        self.dataframe = dataset
         self.column_ranges = self.calculate_column_ranges()
         self.max_per_type = [2,2]
 
 
     def calculate_column_ranges(self):
         column_ranges = {}
-        for column in self.dataset.columns:
-            column_data = self.dataset[column]
+        for column in self.dataframe.columns:
+            column_data = self.dataframe[column]
             column_type = str(column_data.dtype)  # Tipo de dato de la columna
             if column_type == 'object':
                 column_ranges[column] = {'type': 'Not quantitative', 'values': column_data.unique(), 'possible transactions': [0,1,2]}
@@ -30,7 +30,7 @@ dataset = Dataset(df)
 
 # Imprimir dataset y los rangos de cada columna
 print("Dataset:")
-print(dataset.dataset)
+print(dataset.dataframe)
 print("\nRangos de columnas:")
 print(dataset.column_ranges)
 

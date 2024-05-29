@@ -10,7 +10,7 @@ from deap import base, creator, tools
 class Tests:
 
     def chromosome_test(toolbox):
-        cromosoma_ejemplo = toolbox.chromosome()
+        cromosoma_ejemplo = toolbox.individual()
         #aptitud_ejemplo = toolbox.evaluate(cromosoma_ejemplo)
         '''
         print("#### CROMOSOMA EJEMPLO ####")
@@ -64,16 +64,10 @@ def main():
     #### Datos para la comprobación del funcionamiento de las clases
     creator.create("FitnessMax", base.Fitness, weights=(1.0,))
     creator.create("Individual", list, fitness=creator.FitnessMax)
-    creator.create("ChromosomeDEAP", Chromosome, fitness=creator.FitnessMax)
 
     # Toolbox para configurar los algoritmos genéticos
     toolbox = base.Toolbox()
 
-    # Añadimos al toolbox el cromosoma y la poblacion formada por cromosomas
-    #toolbox.register("intervals", random.uniform, min_val=0., max_val=100., n=20)
-    #toolbox.register("transactions", random.choices, [0, 1, 2], k=10)  # Generar transacciones aleatorias
-    toolbox.register("chromosome", Chromosome.create_chromosome, n=3, min_val=0., max_val=10.)
-    toolbox.register("population", tools.initRepeat, list, toolbox.chromosome, 20) # posteriormente para crear una poblacion
 
 
     # data = {
@@ -92,8 +86,14 @@ def main():
 
     df = pd.DataFrame(data)
 
-    toolbox.register("dataset", Dataset, dataframe=df)
+    toolbox.register("dataset", Dataset, dataset=df)
     #Tests.dataset_test(toolbox)
+    
+    # Añadimos al toolbox el cromosoma y la poblacion formada por cromosomas
+    #toolbox.register("intervals", random.uniform, min_val=0., max_val=100., n=20)
+    #toolbox.register("transactions", random.choices, [0, 1, 2], k=10)  # Generar transacciones aleatorias
+    toolbox.register("individual", Chromosome.create_chromosome, dataset=toolbox.dataset())
+    toolbox.register("population", tools.initRepeat, list, toolbox.individual, 20) # posteriormente para crear una poblacion
 
     w=[1.,1.,1.,1.,1.]
     toolbox.register("mate", Operators.crossover)
@@ -103,9 +103,9 @@ def main():
     ind1=Tests.chromosome_test(toolbox)
     ind2=Tests.chromosome_test(toolbox)
 
-    #Tests.operators_test(toolbox, ind1, ind2, [ind1, ind2])
+    #Tests.operators_test(toolbox, ind1, ind2, toolbox.datas)
     Tests.metrics_test(toolbox, ind1, w)
-    #Tests.metrics_test(toolbox, df, ind2, w)
+    Tests.metrics_test(toolbox, ind2, w)
 
 
 if __name__ == "__main__":

@@ -34,40 +34,39 @@ class Operators:
                     upper_z = ind2.intervals[2*i+1]
                 intervalos.extend([lower_z,  upper_z])
                 transacciones.append(t_z)
-        return Chromosome(intervalos, transacciones)
+        return (Chromosome(intervalos, transacciones),Chromosome(intervalos, transacciones))
 
     @staticmethod
     def mutation(ind, dataset):
         # Mutación tipo
         for i in range(len(ind.transactions)):
-            if random.random() < MUTATION_TYPE_PROB:
-                t_i  = ind.transactions[i]
-                #print("Mutación en el gen: ", i)
-                if t_i == 0:
-                    #print(ind.counter_transaction_type)
-                    pmt = Operators.possible_mutation_types(ind.counter_transaction_type, dataset)
-                    t_i = random.choice(pmt)
-                    ind.counter_transaction_type[t_i-1] += 1 # El contador de número de transacciones del cromosoma sube
-                else:
-                    ind.counter_transaction_type[t_i-1] -= 1 # El contador de número de transacciones del cromosoma baja
-                    t_i = 0    
-                ind.transactions[i] = t_i
-            if random.random() < MUTATION_INTERVAL_PROB:
-                ### MEJORAR, numero aleatorio entre 0 y .1
-                print("true")
-                dif = 0.05*(ind.intervals[2*i+1]-ind.intervals[2*i])
-                ls_sign = Operators.check_boundaries(ind, i, dataset)
-                sign1 = ls_sign[0]
-                sign2 = ls_sign[1]
-                tipo_mut = random.choice([0,1,2])
-                if tipo_mut == 0:
-                    ind.intervals[2*i] = ind.intervals[2*i]+sign1*dif
-                elif tipo_mut == 1:
-                    ind.intervals[2*i+1] = ind.intervals[2*i+1]+sign2*dif
-                else:
-                    ind.intervals[2*i] = ind.intervals[2*i]+sign1*dif
-                    ind.intervals[2*i+1] = ind.intervals[2*i+1]+sign2*dif
-        return ind
+            #if random.random() < MUTATION_TYPE_PROB:
+            t_i  = ind.transactions[i]
+            #print("Mutación en el gen: ", i)
+            if t_i == 0:
+                #print(ind.counter_transaction_type)
+                pmt = Operators.possible_mutation_types(ind.counter_transaction_type, dataset)
+                t_i = random.choice(pmt)
+                ind.counter_transaction_type[t_i-1] += 1 # El contador de número de transacciones del cromosoma sube
+            else:
+                ind.counter_transaction_type[t_i-1] -= 1 # El contador de número de transacciones del cromosoma baja
+                t_i = 0    
+            ind.transactions[i] = t_i
+            #if random.random() < MUTATION_INTERVAL_PROB:
+            ### MEJORAR, numero aleatorio entre 0 y .1
+            dif = 0.05*(ind.intervals[2*i+1]-ind.intervals[2*i])
+            ls_sign = Operators.check_boundaries(ind, i, dataset)
+            sign1 = ls_sign[0]
+            sign2 = ls_sign[1]
+            tipo_mut = random.choice([0,1,2])
+            if tipo_mut == 0:
+                ind.intervals[2*i] = ind.intervals[2*i]+sign1*dif
+            elif tipo_mut == 1:
+                ind.intervals[2*i+1] = ind.intervals[2*i+1]+sign2*dif
+            else:
+                ind.intervals[2*i] = ind.intervals[2*i]+sign1*dif
+                ind.intervals[2*i+1] = ind.intervals[2*i+1]+sign2*dif
+        return ind,
     
     @staticmethod
     def check_boundaries(ind, i, dataset):
