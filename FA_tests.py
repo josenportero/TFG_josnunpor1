@@ -16,13 +16,8 @@ def main():
     # Toolbox para configurar los algoritmos genéticos
     toolbox = base.Toolbox()
 
-    #df =   pd.read_csv("C:/Users/Jose/Desktop/TFG/data/FA(in).csv", header=0, sep=';')
-    data = {
-        'A': [1.2, 2.3, 5.6],
-        'B': [7.8, 8.9, 3.3],
-        'C': [9.1, 3.2, 4.8]
-    }
-
+    data=   pd.read_csv("C:/Users/Jose/Desktop/TFG/data/FA(in).csv", header=0, sep=';')
+    
     df = pd.DataFrame(data)
 
     w=1.
@@ -35,7 +30,7 @@ def main():
     toolbox.register("individual", Chromosome.create_chromosome, dataset=toolbox.dataset())
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
     toolbox.register("evaluate", lambda ind: ind.chromosome_eval(toolbox.dataset(), w))
-    toolbox.register("mate", Operators.crossover)
+    toolbox.register("mate", Operators.crossover, dataset=toolbox.dataset())
     toolbox.register("mutate", Operators.mutation, dataset=toolbox.dataset())
     toolbox.register("select", tools.selTournament, tournsize=3)
 
@@ -57,11 +52,11 @@ def main():
     # Define the parameters for the eaSimple algorithm
     ngen = 20
     cxpb = 0.5
-    mutpb = 0.2
+    mutpb = 0.
 
     # Run the evolutionary algorithm
     popfin, logBook = algorithms.eaSimple(population, toolbox, cxpb, mutpb, ngen, stats=None, halloffame=None, verbose=True)
-    print(logBook)
+   
     acumf=0.
     ## Poblacion final    
     for i, ind in enumerate(popfin):

@@ -173,8 +173,6 @@ class Metrics:
         Cálculo de la función fitness tal y como aparece en el paper 'QARGA'
         """
         aux = chromosome.support
-        print('Cromosoma: ',chromosome.calculate_support(dataset))
-        print('Aux: ', aux)
         sup = aux[2]
         conf = aux[2]/aux[0] if aux[0]!=0. else 0.
         recov = Metrics.measure_recovered(dataset, [chromosome])
@@ -188,5 +186,6 @@ class Metrics:
         ampl = sum(agg)/non_zero_t if non_zero_t != 0. else 0.
         #print('nAttrib: ',nAttrib)
         #print(agg)
-        #return w[0]*sup[2] + w[1]*conf - w[2]*recov + w[3]*nAttrib - w[4]*ampl
-        return w*conf
+        #return w*conf
+        return (w[0]*sup, w[1]*conf, w[2]*recov, w[3]*nAttrib, w[4]*ampl)
+        

@@ -31,15 +31,15 @@ class Chromosome:
         se haya establecido.
     '''
 
-    def __init__(self, intervals=None, transactions=None, dataset=None, w=1.):
+    def __init__(self, intervals=None, transactions=None, dataset=None, w=[1.0,1.0,-1.0,1.0,-1.0], NOBJ=5):
 
         self.intervals = intervals if intervals else []
         self.transactions = transactions if transactions else []
+        
         self.counter_transaction_type = self.count_transactions() 
         self.support = self.calculate_support(dataset) 
-        self.fitness = creator.FitnessMax()
-        self.fitness.values= (Metrics.fitness(self, dataset, w),) if dataset is not None else (0.,)
-
+        self.fitness = creator.FitnessMulti()
+        self.fitness.values= (Metrics.fitness(self, dataset, w)) if dataset is not None else (0.,)*NOBJ
 
 
     def create_chromosome(dataset):
@@ -87,7 +87,7 @@ class Chromosome:
 
     # Función de evaluación
     def chromosome_eval(self, dataset, w):
-        return (Metrics.fitness(self, dataset, w),) if dataset is not None else (0.,)
+        return Metrics.fitness(self, dataset, w) if dataset is not None else (0.,)
     
     
 '''
