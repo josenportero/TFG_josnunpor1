@@ -1,8 +1,13 @@
-#from deap import base, creator, tools
+from deap import base, creator, tools
 #from chromosome import Chromosome # para los tests
 import pandas as pd
+import time # Para pruebas
 
 class Metrics:
+
+    W=[0.599,0.4,0.001,0.,0.]
+
+    SUP_CALC = 0
 
     def calculate_support(data, individual_values, individual_attribute_types):
         """
@@ -17,6 +22,9 @@ class Metrics:
         Salidas:
         - support: Lista que contiene el soporte del antecedente, consecuente y regla en ese orden.
         """
+        # Metrics.SUP_CALC += 1
+        inicio = time.time()
+
         support_ant = 0
         support_cons = 0
         support_rule = 0
@@ -59,6 +67,12 @@ class Metrics:
         support.append(support_ant/len(data.dataframe.index))
         support.append(support_cons/len(data.dataframe.index))
         support.append(support_rule/len(data.dataframe.index))
+
+        fin = time.time()
+        tiempo_transcurrido = fin - inicio
+        
+        # #Imprime el tiempo transcurrido
+        print(f"El método tardó {tiempo_transcurrido:.2f} segundos en ejecutarse.")
         return support
 
 
@@ -109,21 +123,19 @@ class Metrics:
         Salida:
         - covered: Lista de booleanos que indica si cada instancia del dataset está cubierta por la regla.
         """
-        cov=[]
+        covered = []
         for i in data.dataframe.index:
-            # For each column verify if the value of that instance is in the range given by the individual
+            res = True
             for c in range(len(data.dataframe.columns)):
-                cov_aux=[]
-                res=True
-                if individual_attribute_types[c]!=0:
-                    #print('Extremo inferior = ', individual_values[c*2], 'Dato= ', dataset.iloc[i,c], ', Extremo superior= ', individual_values[c*2+1])
-                    #print(individual_values[c*2]<=dataset.iloc[i,c]<=individual_values[c*2+1])
-                    res=(individual_values[c*2]<=data.dataframe.iloc[i,c]<=individual_values[c*2+1])&res
-                cov_aux.append(res)
-            #print(cov_aux)
-            cov.append(all(cov_aux))
-            #print(cov)    
-        return cov
+                if individual_attribute_types[c] != 0:
+                    value = data.dataframe.iloc[i, c]
+                    lower_bound = individual_values[c * 2]
+                    upper_bound = individual_values[c * 2 + 1]
+                    if not (lower_bound <= value <= upper_bound):
+                        res = False
+                        break
+            covered.append(res)
+        return covered
 
     def measure_recovered(data, rules):
         """
@@ -139,10 +151,11 @@ class Metrics:
         """
         n = data.dataframe.shape[0]
         agg = [False for _ in range(n)]
-        for rule in rules:
-            cov = Metrics.covered_by_rule(data, rule.intervals, rule.transactions)
-            agg = [x or y for x,y in zip(cov, agg)]
-        return sum(agg)/n
+        if rules is not None:
+            for rule in rules:
+                cov = Metrics.covered_by_rule(data, rule.intervals, rule.transactions)
+                agg = [x or y for x,y in zip(cov, agg)]
+        return sum(agg)/n if rules is not None else 0.
     
     def calculate_certainty_factor(data, individual_values, individual_attribute_types):
         """
@@ -168,26 +181,31 @@ class Metrics:
             cert = 0.
         return cert
     
-    def fitness(chromosome, dataset,  w):
+    def fitness(chromosome, dataset):
         """
         Cálculo de la función fitness tal y como aparece en el paper 'QARGA'
         """
-        aux = chromosome.support
+        if len(chromosome.support)==0:
+            aux = Metrics.calculate_support(dataset, chromosome.intervals, chromosome.transactions)
+            chromosome.support = aux
+        else:
+            aux = chromosome.support
         sup = aux[2]
         conf = aux[2]/aux[0] if aux[0]!=0. else 0.
-        #recov = Metrics.measure_recovered(dataset, [chromosome])
-        nAttrib = sum(chromosome.counter_transaction_type)
-        grouped_ls = [[chromosome.intervals[i], chromosome.intervals[i + 1]] for i in range(0, len(chromosome.intervals), 2)]
-        agg = [0 for _ in range(len(grouped_ls))]
-        for i in range(len(grouped_ls)):
-            if chromosome.transactions[i]!=0:
-                agg[i] = grouped_ls[i][1]-grouped_ls[i][0]
-        non_zero_t = (len(agg)-sum(1 for i in range(len(agg)) if agg[i]==0))
-        ampl_total = sum(agg)/non_zero_t if non_zero_t != 0. else 0.
-        max_ampl = max(agg)
-        ampl = ampl_total/(max_ampl) if max_ampl != 0. else 0.
+        lift = aux[2]/(aux[0]*aux[1]) if (aux[0]!=0.) & (aux[1]!=0.) else 0.
+        #recov = Metrics.measure_recovered(dataset, hof)
+        # nAttrib = sum(chromosome.counter_transaction_type)
+        # grouped_ls = [[chromosome.intervals[i], chromosome.intervals[i + 1]] for i in range(0, len(chromosome.intervals), 2)]
+        # agg = [0 for _ in range(len(grouped_ls))]
+        # for i in range(len(grouped_ls)):
+        #     if chromosome.transactions[i]!=0:
+        #         agg[i] = grouped_ls[i][1]-grouped_ls[i][0]
+        # non_zero_t = (len(agg)-sum(1 for i in range(len(agg)) if agg[i]==0))
+        # ampl_total = sum(agg)/non_zero_t if non_zero_t != 0. else 0.
+        # max_ampl = max(agg)
+        # ampl = ampl_total/(max_ampl) if max_ampl != 0. else 0.
         #print('nAttrib: ',nAttrib)
-        #print(agg)
-        #return w*conf(w[0]*sup + w[1]*conf + w[3]*nAttrib, w[2]*recov +  w[4]*ampl)
-        return w[0]*sup, w[1]*conf, 0., w[3]*nAttrib, w[4]*ampl
+        #print(ampl)
+        #print(w[0]*sup + w[1]*conf + w[3]*nAttrib  -w[4]*ampl,)
+        return Metrics.W[0]*sup + Metrics.W[1]*conf + Metrics.W[2]*lift,  #- Metrics.W[4]*ampl,
         

@@ -1,14 +1,19 @@
 import random
 #from deap import base, creator, tools
-from chromosome import Chromosome 
+from chromosome_simple import Chromosome
+import pandas as pd
 
 ###### CONSTANTES A DEFINIR ########
 MUTATION_TYPE_PROB = 0.33 # Probabilidad de mutacion de tipo de transaccion en cromosoma
 MUTATION_INTERVAL_PROB = 0.33 # Probabilidad de mutacion en extremos del intervalo
-MAX_ATTEMPTS = 50
+MIN_MAX_LIST = [] # Lista con los valores maximo y minimo por atributo - NO SE PUEDEN REBASAR
 MAX_PER_TYPE = [2,2] # Lista con el número de atributos máximo que queremos en antecedente y consecuente
 
 class Operators:
+    data =  pd.read_excel("C:/Users/Jose/Desktop/TFG/data/datos_TFG.xlsx", header=0)
+    df = data.drop(data.columns[0], axis=1)
+    DATASET = df.astype(float)
+
     @staticmethod
     def crossover(ind1, ind2, dataset):
         '''
@@ -24,47 +29,48 @@ class Operators:
         - Si el tipo de transaccion en el gen es distinto, a un hijo se le asignara el tipo y los intervalos
         del primer padre, y al otro el tipo y los intervalos del segundo padre.
                 
-        (¿MODIFICAR?) 
+ 
         '''
-        for _ in range(MAX_ATTEMPTS):
-            intervalos1 = []
-            transacciones1 = []
-            intervalos2 = []
-            transacciones2 = []
-            n = len(ind1.transactions)
-            for i in range(n):
-                if ind1.transactions[i] == ind2.transactions[i]:
-                    lower_z1 = random.choice([ind1.intervals[2*i], ind2.intervals[2*i]])
-                    upper_z1 = random.choice([ind1.intervals[2*i+1], ind2.intervals[2*i+1]])
-                    lower_z2 = ind1.intervals[2*i] if lower_z1 == ind2.intervals[2*i] else ind2.intervals[2*i]
-                    upper_z2 = ind1.intervals[2*i+1] if upper_z1 == ind2.intervals[2*i+1] else ind2.intervals[2*i+1]
-                    int1 = [lower_z1, upper_z1] if lower_z1 < upper_z1 else [upper_z1, lower_z1]
-                    int2 = [lower_z2, upper_z2] if lower_z2 < upper_z2 else [upper_z2, lower_z2]
+        intervalos1 = []
+        transacciones1 = []
+        intervalos2 = []
+        transacciones2 = []
+        n = len(ind1.transactions)
+        #for _ in range(MAX_ATTEMPTS):
+        for i in range(n):
+            if ind1.transactions[i] == ind2.transactions[i]:
+                lower_z1 = random.choice([ind1.intervals[2*i], ind2.intervals[2*i]])
+                upper_z1 = random.choice([ind1.intervals[2*i+1], ind2.intervals[2*i+1]])
+                lower_z2 = ind1.intervals[2*i] if lower_z1 == ind2.intervals[2*i] else ind2.intervals[2*i]
+                upper_z2 = ind1.intervals[2*i+1] if upper_z1 == ind2.intervals[2*i+1] else ind2.intervals[2*i+1]
+                int1 = [lower_z1, upper_z1] if lower_z1 < upper_z1 else [upper_z1, lower_z1]
+                int2 = [lower_z2, upper_z2] if lower_z2 < upper_z2 else [upper_z2, lower_z2]
 
-                    intervalos1.extend(int1)
-                    transacciones1.append(ind1.transactions[i])
-                    intervalos2.extend(int2)
-                    transacciones2.append(ind2.transactions[i])
+                intervalos1.extend(int1)
+                transacciones1.append(ind1.transactions[i])
+                intervalos2.extend(int2)
+                transacciones2.append(ind2.transactions[i])
+            else:
+                t_z1 = random.choice([ind1.transactions[i], ind2.transactions[i]])
+                t_z2 = ind1.transactions[i] if t_z1 == ind2.transactions[i] else ind2.transactions[i]
+                if t_z1 == ind1.transactions[i]:
+                    lower_z1 = ind1.intervals[2*i]
+                    upper_z1 = ind1.intervals[2*i+1]
+                    lower_z2 = ind2.intervals[2*i]
+                    upper_z2 = ind2.intervals[2*i+1]
                 else:
-                    t_z1 = random.choice([ind1.transactions[i], ind2.transactions[i]])
-                    t_z2 = ind1.transactions[i] if t_z1 == ind2.transactions[i] else ind2.transactions[i]
-                    if t_z1 == ind1.transactions[i]:
-                        lower_z1 = ind1.intervals[2*i]
-                        upper_z1 = ind1.intervals[2*i+1]
-                        lower_z2 = ind2.intervals[2*i]
-                        upper_z2 = ind2.intervals[2*i+1]
-                    else:
-                        lower_z1 = ind2.intervals[2*i]
-                        upper_z1 = ind2.intervals[2*i+1]
-                        lower_z2 = ind1.intervals[2*i]
-                        upper_z2 = ind1.intervals[2*i+1]
-                    intervalos1.extend([lower_z1,  upper_z1])
-                    transacciones1.append(t_z1)
-                    intervalos2.extend([lower_z2, upper_z2])
-                    transacciones2.append(t_z2)
-            if Chromosome(intervalos1, transacciones1, dataset).validate() and Chromosome(intervalos2, transacciones2, dataset).validate():
-                return (Chromosome(intervalos1, transacciones1, dataset),Chromosome(intervalos2, transacciones2, dataset))
-        return Chromosome.force_valid(intervalos1,transacciones1, dataset), Chromosome.force_valid(intervalos2,transacciones2, dataset)
+                    lower_z1 = ind2.intervals[2*i]
+                    upper_z1 = ind2.intervals[2*i+1]
+                    lower_z2 = ind1.intervals[2*i]
+                    upper_z2 = ind1.intervals[2*i+1]
+                intervalos1.extend([lower_z1,  upper_z1])
+                transacciones1.append(t_z1)
+                intervalos2.extend([lower_z2, upper_z2])
+                transacciones2.append(t_z2)
+
+        if Operators.check_valid_chromosome(transacciones1) and Operators.check_valid_chromosome(transacciones2):
+            return (Chromosome(intervalos1, transacciones1, dataset),Chromosome(intervalos2, transacciones2, dataset))
+        return Operators.crossover(ind1,ind2,dataset)
 
     @staticmethod
     def mutation(ind, dataset):
@@ -72,6 +78,7 @@ class Operators:
         # print("Cromosoma sin mutar: \n")
         # print("Intervalos: ", ind.intervals)
         # print("Transacciones: ", ind.transactions)
+
         for i in range(len(ind.transactions)):
             #if random.random() < MUTATION_TYPE_PROB:
             t_i  = ind.transactions[i]
@@ -80,9 +87,9 @@ class Operators:
                 #print(ind.counter_transaction_type)
                 pmt = Operators.possible_mutation_types(ind.counter_transaction_type, dataset)
                 t_i = random.choice(pmt)
-                ind.counter_transaction_type[t_i-1] += 1 # El contador de número de transacciones del cromosoma sube
+                ind.counter_transaction_type[t_i] += 1 # El contador de número de transacciones del cromosoma sube
             else:
-                ind.counter_transaction_type[t_i-1] -= 1 # El contador de número de transacciones del cromosoma baja
+                ind.counter_transaction_type[t_i] -= 1 # El contador de número de transacciones del cromosoma baja
                 t_i = 0    
             ind.transactions[i] = t_i
             #if random.random() < MUTATION_INTERVAL_PROB:
@@ -102,9 +109,10 @@ class Operators:
         # print("Cromosoma mutado: \n")
         # print("Intervalos: ", ind.intervals)
         # print("Transacciones: ", ind.transactions)
-        if ind.validate():
+        #ind.transactions = Operators.check_valid_chromosome(ind.transactions)
+        if Operators.check_valid_chromosome(ind.transactions):
             return ind,
-        return Chromosome.force_valid(ind.intervals, ind.transactions, dataset),
+        return Operators.mutation(ind, dataset)
     
     @staticmethod
     def check_boundaries(ind, i, dataset):
@@ -113,7 +121,7 @@ class Operators:
         no nos salimos del intervalo deseado.
         '''
         min_max_ls = Operators.calculate_ranges(dataset)
-        #print("min max list:", min_max_ls)
+        ##print("min max list:", min_max_ls)
         dif = 0.05*(ind.intervals[2*i+1]-ind.intervals[2*i])
         if ind.intervals[2*i]-dif < min_max_ls[2*i] and ind.intervals[2*i+1]+dif > min_max_ls[2*i+1]:
             sign1 = +1       
@@ -136,15 +144,14 @@ class Operators:
         la transacción, asegurándose así que no se superan los límites establecidos de atributos en el
         antecedente y en el consecuente.        
         """
-        if (ls_count_transactions[0] < dataset.max_per_type[0]) & (ls_count_transactions[1] < dataset.max_per_type[1]):
+        if (ls_count_transactions[1] < dataset.max_per_type[0]) & (ls_count_transactions[2] < dataset.max_per_type[1]):
             res = [1,2]
-        elif ls_count_transactions[0] < dataset.max_per_type[0]:
+        elif ls_count_transactions[1] < dataset.max_per_type[0]:
             res = [1]
-        elif ls_count_transactions[1] < dataset.max_per_type[1]:
+        elif ls_count_transactions[2] < dataset.max_per_type[1]:
             res = [2]
         else:
             res = [0]
-        #print(res)
         return res
     
     def calculate_ranges(dataset):
@@ -154,6 +161,18 @@ class Operators:
                 ls.append(dataset.column_ranges[c]['min'])
                 ls.append(dataset.column_ranges[c]['max'])
         return ls
+    
+    def check_valid_chromosome(transactions):
+        '''
+        Método que se asegura de que todo cromosoma sea válido y tenga 'sentido', i.e.
+        que tenga al menos un atributo en antecedente y otro en consecuente.
+        '''
+        # Ensure at least one 1 and one 2 in the transactions list
+        antecedents = [t for t in transactions if t == 1]
+        consequents = [t for t in transactions if t == 2]
+        if len(antecedents) < 1 or len(antecedents) > MAX_PER_TYPE[0] or len(consequents) < 1 or len(consequents) > MAX_PER_TYPE[1]:
+            return False
+        return True
 
 '''
     NO HACE FALTA CON LA NUEVA CLASE DATASET

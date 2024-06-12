@@ -1,6 +1,6 @@
 import random
 import pandas as pd
-from metrics import Metrics
+from metrics_simple import Metrics
 from dataset import Dataset
 from deap import base
 from deap import creator
@@ -30,15 +30,14 @@ class Chromosome:
         'medida de bondad' de cada regla de asociacion concreta, en funcion del criterio que
         se haya establecido.
     '''
-
-    def __init__(self, intervals=None, transactions=None, dataset=None, w=[0.2,0.2,0.2,0.2,0.2], NOBJ=5):
+    def __init__(self, intervals=None, transactions=None, dataset=None):
         self.intervals = intervals if intervals else []
         self.transactions = transactions if transactions else []
         self.dataset = dataset
         self.counter_transaction_type = self.count_transactions() 
-        self.support = self.calculate_support(dataset) 
-        self.fitness = creator.FitnessMulti()
-        self.fitness.values= (Metrics.fitness(self, dataset, w)) if dataset is not None else 0.
+        self.support = []
+        self.fitness = creator.Fitness()
+        self.fitness.values= Metrics.fitness(self, dataset) if dataset is not None else 0.
 
     def __str__(self):
             '''
@@ -149,8 +148,6 @@ class Chromosome:
         #print(counts)
         return Chromosome(intervalos, transacciones, dataset)
 
-
-
     def count_transactions(self):
         contador = [0, 0, 0]  # Inicializamos un contador para transacciones en antecedente y consecuente (resto no aparecen en regla)
         for t in self.transactions:
@@ -160,33 +157,33 @@ class Chromosome:
                 contador[t]+=1
         return contador
     
-    def calculate_support(self, dataset):
-        '''
-        Mediante la definición de esta función, guardamos el soporte de una regla de asociación (cromosoma)
-        como un atributo propio de la clase Cromosoma, para evitar recalcular constantemente este valor.
-        '''
-        intervals = self.intervals
-        transactions = self.transactions
-        return Metrics.calculate_support(dataset, intervals, transactions) if dataset is not None else []
+    # def calculate_support(self, dataset):
+    #     '''
+    #     Mediante la definición de esta función, guardamos el soporte de una regla de asociación (cromosoma)
+    #     como un atributo propio de la clase Cromosoma, para evitar recalcular constantemente este valor.
+    #     '''
+    #     intervals = self.intervals
+    #     transactions = self.transactions
+    #     return Metrics.calculate_support(dataset, intervals, transactions) if dataset is not None else []
 
 
     # Función de evaluación
-    def chromosome_eval(self, dataset, w):
-        return Metrics.fitness(self, dataset, w) if dataset is not None else (0.,)
+    def chromosome_eval(self, dataset):
+        return Metrics.fitness(self, dataset) if dataset is not None else (0.,)
     
-    
-    def validate(self):
-        '''
+'''    
+    def validate(self, transactions):
+        """
         Comprobación de que el cromosoma cumple las restricciones que se establecen en el paper de QARGA seccion 2.3 (i.e. 
         representa una regla de asociación con sentido).
-        '''
-        antecedents = [t for t in self.transactions if t == 1]
-        consequents = [t for t in self.transactions if t == 2]
+        """
+        antecedents = [t for t in transactions if t == 1]
+        consequents = [t for t in transactions if t == 2]
         if len(antecedents) < 1 or len(antecedents) > MAX_PER_TYPE[0] or len(consequents) < 1 or len(consequents) > MAX_PER_TYPE[1]:
             return False
         return True
     
-'''
+
 # Definiciones creator DEAP
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 creator.create("Individual", list, fitness=creator.FitnessMax)

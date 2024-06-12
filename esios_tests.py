@@ -9,58 +9,50 @@ import seaborn as sns
 from deap import base, creator, tools, algorithms
 from scoop import futures
 
-def log_results(data, pop, logbook, hof, file_path='C:/Users/Jose/Desktop/TFG/out/results_fitness.txt'):
-    # Precision, apalancamiento, kulzcynski
+def log_results(data, pop,  logbook, hof, file_path='C:/Users/Jose/Desktop/TFG/out/results_fitness_esiosv2.txt'):
+    # Precision, apalancamiento , kulzcynski
     with open(file_path, 'a') as f:
         f.write("Estadísticas de cada generación:\n")
         for record in logbook:
             f.write(f"Gen: {record['gen']} - Avg: {record['avg']} - Std: {record['std']} - Min: {record['min']} - Max: {record['max']}\n")
-        f.write("\nMejores individuos en el Hall of Fame:\n")
+
+        f.write("Métricas del Hall Of Fame:\n")
+        f.write("Individuo;Soporte;Confianza;Lift;Ganancia;Convicción;Porcentaje de instancias cubiertas;Factor de certeza normalizado; Fitness\n")
+        i=0
         for ind in hof:
-            f.write(f"{ind} - Fitness: {np.round(ind.fitness.values, 2)}\n")
-        f.write("\n")
+            i+=1
+            support = round(ind.support[2],3)
+            confidence = round(ind.support[2] / ind.support[0], 3) if ind.support[0] != 0 else 0.
+            lift = round(ind.support[2] / (ind.support[0] * ind.support[1]), 3) if (ind.support[0] != 0) & (ind.support[1] != 0) else 0.
+            gain = round(confidence - ind.support[1],3)  # Calcular ganancia
+            conviction = round((1-ind.support[1])/(1-confidence),3)  if confidence!=1. else float('inf') # Calcular convicción
+            coverage_percentage = round(Metrics.measure_recovered(data, [ind]),3)  # Calcular porcentaje de instancias del dataset que cubre
+            normalized_certainty_factor = round(Metrics.calculate_certainty_factor(data,ind.intervals, ind.transactions),3)  # Calcular factor de certeza normalizado
+            fitness = np.round(ind.fitness.values, 2)
+            f.write(f"{ind};{support};{confidence};{lift};{gain};{conviction};{coverage_percentage};{normalized_certainty_factor};{fitness}\n")
 
-        f.write("Métricas de la última generación:\n")
-        f.write("Individuo;Soporte;Confianza;Lift;Ganancia;Convicción;Porcentaje de instancias cubiertas;Factor de certeza normalizado\n")
-        i = 0
-        for ind in pop:
-            i += 1
-            support = ind.support[2]
-            confidence = ind.support[2] / ind.support[0] if ind.support[0] != 0 else 0.
-            lift = ind.support[2] / (ind.support[0] * ind.support[1]) if (ind.support[0] != 0) & (ind.support[1] != 0) else 0.
-            gain = confidence - ind.support[1]  # Calcular ganancia
-            conviction = (1 - ind.support[1]) / (1 - confidence) if confidence != 1. else float('inf')  # Calcular convicción
-            coverage_percentage = Metrics.measure_recovered(data, [ind])  # Calcular porcentaje de instancias del dataset que cubre
-            normalized_certainty_factor = Metrics.calculate_certainty_factor(data, ind.intervals, ind.transactions)  # Calcular factor de certeza normalizado
-            f.write(f"{i};{support};{confidence};{lift};{gain};{conviction};{coverage_percentage};{normalized_certainty_factor}\n")
-
-        recov = Metrics.measure_recovered(data, pop)
-        f.write(f"El porcentaje total de instancias cubierto por las reglas es {recov * 100}% \n")
+        recovp = Metrics.measure_recovered(data, pop)
+        recov = Metrics.measure_recovered(data, hof)
+        f.write(f"El porcentaje total de instancias cubierto por las reglas del Hall Of Fame es {recov*100}% \n")
+        f.write(f"El porcentaje total de instancias cubierto por las reglas (de la última generación) es {recovp*100}% \n")
 
 def get_fitness_values(ind):
     return ind.fitness.values if ind.fitness.values is not None else 0.
 
-def get_support(ind):
-    return ind.support[2]
-
-def get_confidence(ind):
-    return ind.support[2] / ind.support[0] if ind.support[0] != 0 else 0.
-
-def get_lift(ind):
-    return ind.support[2] / (ind.support[0] * ind.support[1]) if (ind.support[0] != 0) & (ind.support[1] != 0) else 0.
-
 def main():
     #### Datos para la comprobación del funcionamiento de las clases
+
+    # Inicialización DEAP
+    
     # Toolbox para configurar los algoritmos genéticos
     toolbox = base.Toolbox()
 
-    data = pd.read_csv("C:/Users/Jose/Desktop/TFG/data/FA(in).csv", header=0, sep=';')
-    
-    df = pd.DataFrame(data)
-
-    w = [0.5, 0.5, 0.0, 0.0, 0.0]
+    data =   pd.read_excel("C:/Users/Jose/Desktop/TFG/data/datos_TFG.xlsx", header=0)
+    df = data.drop(data.columns[0], axis=1)
+    df = df.astype(float)
 
     toolbox.register("dataset", Dataset, dataset=df)
+
 
     creator.create("Fitness", base.Fitness, weights=(1.0,))
     creator.create("Individual", Chromosome, fitness=creator.Fitness)
@@ -72,21 +64,23 @@ def main():
     toolbox.register("mutate", Operators.mutation, dataset=toolbox.dataset())
     toolbox.register("select", tools.selTournament, tournsize=3)
 
+    # Evalución paralela para agilizar calculos
     toolbox.register("map", futures.map)
 
-    ngen = 100  # Número de generaciones
-    npop = 50  # Número de individuos en población
+
+    ngen      = 100 # Número de generaciones
+    npop      = 500 # Número de individuos en población
     tol = 0.001  # Umbral de mejora mínima por generación
-    convergence_generations = 10  # Número de generaciones en los que buscar convergencia
-    pop = toolbox.population(n=npop)
+    convergence_generations = 10   # Número de generaciones en los que buscar convergencia
+    pop   = toolbox.population(n=npop)
     hof_size = 6
 
-    hof = tools.HallOfFame(hof_size)
+    hof   = tools.HallOfFame(hof_size)
 
-    stats_fit = tools.Statistics(get_fitness_values)
-    stats_sup = tools.Statistics(get_support)
-    stats_conf = tools.Statistics(get_confidence)
-    stats_lift = tools.Statistics(get_lift)
+    stats_fit = tools.Statistics(lambda ind: ind.fitness.values)
+    stats_sup = tools.Statistics(lambda ind : ind.support[2])
+    stats_conf = tools.Statistics(lambda ind : ind.support[2]/ind.support[0] if ind.support[0]!=0 else 0.)
+    stats_lift = tools.Statistics(lambda ind : ind.support[2]/(ind.support[0]*ind.support[1]) if (ind.support[0]!=0.) & (ind.support[1]!=0.) else 0.)
 
     # Estadísticas de fitness
     stats_fit.register("avg", np.mean, axis=0)
@@ -96,7 +90,7 @@ def main():
     
     # Estadísticas de soporte
     stats_sup.register("avgSupport", np.mean, axis=0)
-    # stats_sup.register("maxSupport", np.max, axis=0)
+    #stats_sup.register("maxSupport", np.max, axis=0)
 
     # Estadísticas de confianza
     stats_conf.register("avgConfidence", np.mean, axis=0)
@@ -122,16 +116,18 @@ def main():
 
     best_ind = tools.selBest(pop, 1)[0]
     sup_best = best_ind.support[2]
-    conf_best = best_ind.support[2] / best_ind.support[0] if best_ind.support[0] != 0 else 0.
-    lift_best = best_ind.support[2] / (best_ind.support[0] * best_ind.support[1]) if (best_ind.support[0] != 0.) & (best_ind.support[1] != 0.) else 0.
+    conf_best = best_ind.support[2]/best_ind.support[0] if best_ind.support[0]!=0 else 0.
+    lift_best = best_ind.support[2]/(best_ind.support[0]*best_ind.support[1]) if (best_ind.support[0]!=0.) & (best_ind.support[1]!=0.) else 0.
     record = mstats.compile(pop)
-    logbook.record(gen=0, nevals=len(invalid_ind), avg=round(record['fitness']['avg'][0], 2), std=round(record['fitness']['std'][0], 2), min=round(record['fitness']['min'][0], 2),
-                   max=round(record['fitness']['max'][0], 2),
-                   avgSupport=round(record['support']['avgSupport'], 2), maxSupport=round(sup_best, 2),
-                   avgConfidence=round(record['confidence']['avgConfidence'], 2), maxConfidence=round(conf_best, 2),
-                   avgLift=round(record['lift']['avgLift'], 2), maxLift=round(lift_best, 2))
-    print(logbook.stream)
+    #print(record)
     
+    logbook.record(gen=0, nevals=len(invalid_ind), avg=round(record['fitness']['avg'][0],2), std=round(record['fitness']['std'][0], 2), min=round(record['fitness']['min'][0],2),
+                    max=round(record['fitness']['max'][0],2),
+                   avgSupport=round(record['support']['avgSupport'],2), maxSupport=round(sup_best,2),
+                   avgConfidence=round(record['confidence']['avgConfidence'],2), maxConfidence=round(conf_best,2),
+                   avgLift=round(record['lift']['avgLift'],2), maxLift=round(lift_best, 2))
+    print(logbook.stream)
+    print("Soportes calculados: ", Metrics.SUP_CALC)
     ls = []
     fitness_history = []
     support_history = []
@@ -181,6 +177,7 @@ def main():
                    avgConfidence=round(record['confidence']['avgConfidence'],2), maxConfidence=round(conf_best,2),
                    avgLift=round(record['lift']['avgLift'],2), maxLift=round(lift_best, 2))
         print(logbook.stream)
+        #print("Soportes calculados: ", Metrics.SUP_CALC)
 
 
         # Fitness del mejor individuo de cada generación
@@ -246,6 +243,6 @@ def main():
     plt.grid(True)
     plt.show()
 
+    
 if __name__ == "__main__":
     main()
-

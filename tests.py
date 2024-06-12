@@ -1,6 +1,6 @@
-from chromosome import Chromosome
-from metrics import Metrics
-from operators import Operators
+from chromosome_simple import Chromosome
+from metrics_simple import Metrics
+from operators_simple import Operators
 from dataset import Dataset
 import pandas as pd
 from deap import base, creator, tools
@@ -25,31 +25,32 @@ class Tests:
         return cromosoma_ejemplo
     
     def dataset_test(toolbox):
-        print("Dataframe: ", toolbox.dataset().dataset)
+        print("Dataframe: ", toolbox.dataset().dataframe)
         print("Diccionario de constraints por atributo: ", toolbox.dataset().column_ranges)
 
-    def operators_test(toolbox, ind1, ind2):
+    def operators_test(toolbox, ind1, ind2, dataset):
         print("Antes del cruce:")
         print("Individuo 1 - Intervalos:", ind1.intervals)
         print("Individuo 1 - Transacciones:", ind1.transactions)
         print("Individuo 2 - Intervalos:", ind2.intervals)
         print("Individuo 2 - Transacciones:", ind2.transactions)
 
-        ind_cruce = toolbox.mate(ind1, ind2)
+        ind_cruce = toolbox.mate(ind1, ind2,dataset)
 
         print("\nDespués del cruce:")
-        print("Individuo Cruce - Intervalos:", ind_cruce.intervals)
-        print("Individuo Cruce - Transacciones:", ind_cruce.transactions)
+        print("Individuo Cruce 1 - Intervalos:", ind_cruce[0].intervals)
+        print("Individuo Cruce 1 - Transacciones:", ind_cruce[0].transactions)
+        print("Individuo Cruce 2 - Intervalos:", ind_cruce[1].intervals)
+        print("Individuo Cruce 2 - Transacciones:", ind_cruce[1].transactions)
         
         print("\nDespués de la mutación:")
         indm = toolbox.mutate(ind1)
-        print("Individuo 1 - Intervalos:", indm.intervals)
-        print("Individuo 1 - Transacciones:", indm.transactions)
+        print("Individuo 1 - Intervalos:", indm[0].intervals)
+        print("Individuo 1 - Transacciones:", indm[0].transactions)
 
     def metrics_test(toolbox, c, w):
         print("\n Cromosoma ")
-        print("Intervalos: ", c.intervals)
-        print("Transacciones", c.transactions)
+        print(c)
         print("Soporte: ", Metrics.calculate_support(toolbox.dataset(), c.intervals, c.transactions))
         print("Confianza de la regla: ", Metrics.calculate_confidence(toolbox.dataset(), c.intervals, c.transactions))
         print("Lift: ", Metrics.calculate_lift(toolbox.dataset(), c.intervals, c.transactions))
@@ -70,19 +71,19 @@ def main():
 
 
 
-    # data = {
-    #     'A': [1.2, 2.3, 3.4, 4.5, 5.6],
-    #     'B': [7.8, 8.9, 9.0, 10.1, 11.2],
-    #     'C': [13.4, 14.5, 15.6, 16.7, 17.8],
-    #     'D': [19.0, 20.1, 21.2, 22.3, 23.4],
-    #     'E': [25.6, 26.7, 27.8, 28.9, 30.0]
-    # }
-
     data = {
-        'A': [1.2, 2.3, 5.6],
-        'B': [7.8, 8.9, 3.3],
-        'C': [9.1, 3.2, 4.8]
+        'A': [1.2, 2.3, 3.4, 4.5, 5.6],
+        'B': [7.8, 8.9, 9.0, 10.1, 11.2],
+        'C': [13.4, 14.5, 15.6, 16.7, 17.8],
+        'D': [19.0, 20.1, 21.2, 22.3, 23.4],
+        'E': [25.6, 26.7, 27.8, 28.9, 30.0]
     }
+
+    # data = {
+    #     'A': [1.2, 2.3, 5.6],
+    #     'B': [7.8, 8.9, 3.3],
+    #     'C': [9.1, 3.2, 4.8]
+    # }
 
     df = pd.DataFrame(data)
 
@@ -103,9 +104,9 @@ def main():
     ind1=Tests.chromosome_test(toolbox)
     ind2=Tests.chromosome_test(toolbox)
 
-    #Tests.operators_test(toolbox, ind1, ind2, toolbox.datas)
-    Tests.metrics_test(toolbox, ind1, w)
-    Tests.metrics_test(toolbox, ind2, w)
+    Tests.operators_test(toolbox, ind1, ind2, toolbox.dataset())
+    #Tests.metrics_test(toolbox, ind1, w)
+    #Tests.metrics_test(toolbox, ind2, w)
 
 
 if __name__ == "__main__":
