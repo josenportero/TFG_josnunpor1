@@ -60,7 +60,8 @@ def main():
 
     w = [0.5, 0.5, 0.0, 0.0, 0.0]
 
-    toolbox.register("dataset", Dataset, dataset=df)
+    toolbox.register("dataset", Dataset, dataframe=df)
+    print(toolbox.dataset().column_ranges)
 
     creator.create("Fitness", base.Fitness, weights=(1.0,))
     creator.create("Individual", Chromosome, fitness=creator.Fitness)

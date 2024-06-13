@@ -5,7 +5,7 @@ import time # Para pruebas
 
 class Metrics:
 
-    W=[0.599,0.4,0.001,0.,0.]
+    W=[0.4,0.4,0.2,0.,0.]
 
     SUP_CALC = 0
 
@@ -23,44 +23,44 @@ class Metrics:
         - support: Lista que contiene el soporte del antecedente, consecuente y regla en ese orden.
         """
         # Metrics.SUP_CALC += 1
-        inicio = time.time()
+        #inicio = time.time()
 
         support_ant = 0
         support_cons = 0
         support_rule = 0
         support = []
         #print(data)
-        # Iterate over instances
+        # Iteramos sobre las instancias
         for i in data.dataframe.index:
             verifyAnt = [] 
             verifyCons = []
-            # For each column verify if the value of that instance is in the range given by the individual
+            # Por columna, verificamos si el valor de dicha instancia está en el rango dado por el individuo
             for c in range(len(data.dataframe.columns)):
-                # We check that te value in the Dataframe's column is in the range specified by the Chromosome
+                # Comprobamos si el valor en la columna del dataframeestá en el rango especificado por el Cromosoma
                 #print(c)
                 #print(individual_values[c*2], " + ", individual_values[2*c+1])
                 if (data.dataframe.iloc[i,c] >= individual_values[c*2]) & (data.dataframe.iloc[i,c] <= individual_values[c*2+1]):
-                    # We only care about a rule when transaction is different than null, i.e., transaction[c]!=0 
+                    # Solo nos importa una regla cuando una transacción está en antecedente o consecuente, i.e., es distinta a 0
                     if individual_attribute_types[c] == 1:
-                        # In this case, the rule is in the antecedent
+                        # En este caso el atributo está en antecedente
                         verifyAnt.append(True)
                     elif individual_attribute_types[c] == 2:
-                        # In this case, rule is in consequent
+                        # En este caso, atributo en consecuente
                         verifyCons.append(True)
                 else:
                     if individual_attribute_types[c] == 1:
                         verifyAnt.append(False)
                     elif individual_attribute_types[c] == 2:
                         verifyCons.append(False)
-                # When verifyAnt == True for all the columns, the support of the antecedent of the rule increases by 1
+                # Cuando verifyAnt == True para todas las columnas, el soporte del antecedente de la regla se incrementa una unidad        
             #print(verifyAnt)
             #print(verifyCons)
             if all(verifyAnt):       
                 support_ant += 1
-                # If verifyCons  == True for all the columns the rule support increases by 1
+                # Si verifyCons  == True para todas las columnas el soporte del consecuente de la regla se incrementa
                 if all(verifyCons):
                     support_rule += 1
-            # For each instance, if verifyCons  == True for all the columns the consequent support increases by 1
+            # FPara cada instancia, si verifyCons  == True para todas las columnas el consecuente se incrementa por 1
             if all(verifyCons):
                 support_cons += 1
 
@@ -68,11 +68,11 @@ class Metrics:
         support.append(support_cons/len(data.dataframe.index))
         support.append(support_rule/len(data.dataframe.index))
 
-        fin = time.time()
-        tiempo_transcurrido = fin - inicio
+        #fin = time.time()
+        #tiempo_transcurrido = fin - inicio
         
         # #Imprime el tiempo transcurrido
-        print(f"El método tardó {tiempo_transcurrido:.2f} segundos en ejecutarse.")
+        #print(f"El método tardó {tiempo_transcurrido:.2f} segundos en ejecutarse.")
         return support
 
 
@@ -157,7 +157,7 @@ class Metrics:
                 agg = [x or y for x,y in zip(cov, agg)]
         return sum(agg)/n if rules is not None else 0.
     
-    def calculate_certainty_factor(data, individual_values, individual_attribute_types):
+    def calculate_certainty_factor(chromosome):
         """
         Calcula el factor de certeza para una regla X => Y en un conjunto de datos.
 
@@ -170,9 +170,11 @@ class Metrics:
         Salida:
         - cert: Valor del factor de certeza para la regla X => Y.
         """
-        cert = 0.
-        conf_XY = Metrics.calculate_confidence(data, individual_values, individual_attribute_types)
-        sup_Y = Metrics.calculate_support(data, individual_values, individual_attribute_types)[2]
+        sup = chromosome.support
+        sup_Y = sup[1]
+        conf_XY = sup[2]/sup[0] if sup[0]!=0. else 0.
+        #conf_XY = Metrics.calculate_confidence(data, individual_values, individual_attribute_types)
+        #sup_Y = Metrics.calculate_support(data, individual_values, individual_attribute_types)[2]
         if conf_XY > sup_Y:
             cert = (conf_XY - sup_Y)/(1-sup_Y)
         elif conf_XY < sup_Y:
@@ -193,6 +195,7 @@ class Metrics:
         sup = aux[2]
         conf = aux[2]/aux[0] if aux[0]!=0. else 0.
         lift = aux[2]/(aux[0]*aux[1]) if (aux[0]!=0.) & (aux[1]!=0.) else 0.
+        cf = Metrics.calculate_certainty_factor(chromosome)
         #recov = Metrics.measure_recovered(dataset, hof)
         # nAttrib = sum(chromosome.counter_transaction_type)
         # grouped_ls = [[chromosome.intervals[i], chromosome.intervals[i + 1]] for i in range(0, len(chromosome.intervals), 2)]
@@ -207,5 +210,5 @@ class Metrics:
         #print('nAttrib: ',nAttrib)
         #print(ampl)
         #print(w[0]*sup + w[1]*conf + w[3]*nAttrib  -w[4]*ampl,)
-        return Metrics.W[0]*sup + Metrics.W[1]*conf + Metrics.W[2]*lift,  #- Metrics.W[4]*ampl,
+        return Metrics.W[0]*sup + Metrics.W[1]*conf + Metrics.W[2]*cf,  #- Metrics.W[4]*ampl,
         

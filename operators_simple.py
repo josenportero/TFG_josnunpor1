@@ -10,9 +10,7 @@ MIN_MAX_LIST = [] # Lista con los valores maximo y minimo por atributo - NO SE P
 MAX_PER_TYPE = [2,2] # Lista con el número de atributos máximo que queremos en antecedente y consecuente
 
 class Operators:
-    data =  pd.read_excel("C:/Users/Jose/Desktop/TFG/data/datos_TFG.xlsx", header=0)
-    df = data.drop(data.columns[0], axis=1)
-    DATASET = df.astype(float)
+
 
     @staticmethod
     def crossover(ind1, ind2, dataset):
