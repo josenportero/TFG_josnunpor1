@@ -126,7 +126,7 @@ class Operators:
         '''
         min_max_ls = Operators.calculate_ranges()
         ##print("min max list:", min_max_ls)
-        dif = 0.05*(ind.intervals[2*i+1]-ind.intervals[2*i])
+        dif = random.uniform(0, 0.1)*(ind.intervals[2*i+1]-ind.intervals[2*i])
         if ind.intervals[2*i]-dif < min_max_ls[2*i] and ind.intervals[2*i+1]+dif > min_max_ls[2*i+1]:
             sign1 = +1       
             sign2 = -1

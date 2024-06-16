@@ -56,7 +56,7 @@ def main():
 
     recov = 0.
 
-    print(toolbox.dataset().dataframe)
+    #print(toolbox.dataset().dataframe)
     #print(toolbox.dataset().column_ranges)
     creator.create("Fitness", base.Fitness, weights=(1.0,))
     creator.create("Individual", Chromosome, fitness=creator.Fitness)
@@ -73,7 +73,7 @@ def main():
 
 
     ngen = 50 # Número de generaciones
-    npop = 100 # Número de individuos en población
+    npop = 50 # Número de individuos en población
     tol = 0.001  # Umbral de mejora mínima por generación
     convergence_generations = 10   # Número de generaciones en los que buscar convergencia
     pop   = toolbox.population(n=npop)
@@ -142,6 +142,7 @@ def main():
                    avgConfidence=round(record['confidence']['avgConfidence'],2), maxConfidence=round(conf_best,2),
                    avgCF=round(record['cf']['avgCF'],2), maxCF=round(cf_best, 2))
     print(logbook.stream)
+
     #print("Soportes calculados: ", Metrics.SUP_CALC)
     ls = []
     fitness_history = []
@@ -177,7 +178,7 @@ def main():
         Metrics.recov = Metrics.measure_recovered(hof)
         print(Metrics.measure_recovered(hof))
         print("Medida recuperada por las reglas de la generación anterior", Metrics.recov)
-        
+
         # Reemplazamos la antigua población por la nueva
         pop[:] = offspring
 
