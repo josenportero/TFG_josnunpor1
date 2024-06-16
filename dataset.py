@@ -1,6 +1,9 @@
 import pandas as pd
 
 
+data =   pd.read_excel("C:/Users/Jose/Desktop/TFG/data/datos_TFGb.xlsx", header=0)
+
+
 def data_preprocessing(data):
     df = data.drop(data.columns[0], axis=1)
 
@@ -27,6 +30,7 @@ def data_preprocessing(data):
         'temp_media_Madrid', 'temp_media_Valencia'
     ], axis=1, inplace=True)
 
+    df.drop(['fecha'],axis=1, inplace=True)
 
     return df
 
@@ -41,35 +45,37 @@ def max_norm(df):
     return df
 
 
+def calculate_column_ranges(dataframe):
+    column_ranges = {}
+    for column in dataframe.columns:
+        column_data = dataframe[column]
+        column_type = str(column_data.dtype)  # Tipo de dato de la columna
+        if column=='precio':
+            column_ranges[column] = {'type': 'Quantitative', 'min': column_data.min(), 'max': column_data.max(), 'possible transactions':[2]}
+
+        elif column_type == 'object':
+            column_ranges[column] = {'type': 'Not quantitative', 'values': column_data.unique(), 'possible transactions': [0,1]}
+        else:
+            column_ranges[column] = {'type': 'Quantitative', 'min': column_data.min(), 'max': column_data.max(), 'possible transactions': [0,1]}
+    return column_ranges
+
 class Dataset:
-    def __init__(self, ruta="C:/Users/Jose/Desktop/TFG/data/datos_TFGb.xlsx"):
-        data =   pd.read_excel(ruta, header=0)
-        self.dataframe = data_preprocessing(data)
-        self.column_ranges = self.calculate_column_ranges()
-        self.max_per_type = [2,2]
 
-
-    def calculate_column_ranges(self):
-        column_ranges = {}
-        for column in self.dataframe.columns:
-            column_data = self.dataframe[column]
-            column_type = str(column_data.dtype)  # Tipo de dato de la columna
-            if column=='precio':
-                column_ranges[column] = {'type': 'Quantitative', 'min': column_data.min(), 'max': column_data.max(), 'possible transactions':[2]}
-
-            elif column_type == 'object':
-                column_ranges[column] = {'type': 'Not quantitative', 'values': column_data.unique(), 'possible transactions': [0,1,2]}
-            else:
-                column_ranges[column] = {'type': 'Quantitative', 'min': column_data.min(), 'max': column_data.max(), 'possible transactions': [0,1,2]}
-        return column_ranges
+    # Dataframe estático, no varía a lo largo de nuestro problema
+    dataframe = data_preprocessing(data)
+    column_ranges = calculate_column_ranges(dataframe)
     
 
 
+#print(Dataset.column_ranges)
+
+
+'''
 datos_prueb = Dataset()
 
     
     # print(DATAFRAME)
-'''
+
 # Ejemplo de uso
 data = {
     'A': [1, 2, 3, 4, 5],

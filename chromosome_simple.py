@@ -8,7 +8,7 @@ from deap import tools
 
 
 #### CONSTANTES DEFINIDAS
-MAX_PER_TYPE = [2,2] # Lista con el número de atributos máximo que queremos en antecedente y consecuente
+ # Lista con el número de atributos máximo que queremos en antecedente y consecuente
 
 class Chromosome:
     '''
@@ -30,14 +30,14 @@ class Chromosome:
         'medida de bondad' de cada regla de asociacion concreta, en funcion del criterio que
         se haya establecido.
     '''
-    def __init__(self, intervals=None, transactions=None, dataset=None):
+    MAX_PER_TYPE = [3,1]
+    def __init__(self, intervals=None, transactions=None):
         self.intervals = intervals if intervals else []
         self.transactions = transactions if transactions else []
-        self.dataset = dataset
         self.counter_transaction_type = self.count_transactions() 
         self.support = []
         self.fitness = creator.Fitness()
-        self.fitness.values= Metrics.fitness(self, dataset) if dataset is not None else 0.
+        self.fitness.values= Metrics.fitness(self) 
 
     def __str__(self):
             '''
@@ -47,8 +47,8 @@ class Chromosome:
             ant = [i for i in range(len(self.transactions)) if self.transactions[i] == 1]
             cons = [i for i in range(len(self.transactions)) if self.transactions[i] == 2]
             
-            a_names = [self.dataset.dataframe.columns[e] for e in ant]
-            c_names = [self.dataset.dataframe.columns[e] for e in cons]
+            a_names = [Dataset.dataframe.columns[e] for e in ant]
+            c_names = [Dataset.dataframe.columns[e] for e in cons]
 
             a_interv = [[self.intervals[2*i], self.intervals[2*i+1]] for i in ant]
             c_interv = [[self.intervals[2*i], self.intervals[2*i+1]] for i in cons]
@@ -82,21 +82,21 @@ class Chromosome:
                     return False
         return True
 
-    def create_chromosome(dataset):
+    def create_chromosome():
         intervalos = []
         transacciones = []
         count = [0,0,0]
-        for c in dataset.column_ranges:
-            min_val = dataset.column_ranges[c]['min']
-            max_val = dataset.column_ranges[c]['max']
+        for c in Dataset.column_ranges:
+            min_val = Dataset.column_ranges[c]['min']
+            max_val = Dataset.column_ranges[c]['max']
             inf = random.uniform(min_val, max_val)
             sup = random.uniform(inf, max_val)
             intervalos.extend([inf, sup])
-            t = random.choice(dataset.column_ranges[c]['possible transactions'])
-            if t == 1 and count[1] < MAX_PER_TYPE[0]:
+            t = random.choice(Dataset.column_ranges[c]['possible transactions'])
+            if t == 1 and count[1] < Chromosome.MAX_PER_TYPE[0]:
                 count[1] += 1
                 transacciones.append(t)
-            elif t == 2 and count[2] < MAX_PER_TYPE[1]:
+            elif t == 2 and count[2] < Chromosome.MAX_PER_TYPE[1]:
                 count[2] += 1
                 transacciones.append(t)
             else:
@@ -113,9 +113,9 @@ class Chromosome:
             transacciones[idx] = 2
             count[2] += 1
 
-        return Chromosome(intervalos, transacciones, dataset)
+        return Chromosome(intervalos, transacciones)
     
-    def force_valid(intervalos, transacciones, dataset):
+    def force_valid(intervalos, transacciones):
         '''
         Método auxiliar, en caso de que los operadores de mutación y cruce no puedan generar un
         individuo válido pasado el número máximo de iteraciones, forzar la creación de uno
@@ -123,14 +123,14 @@ class Chromosome:
         '''
         ### POSIBLE MEJORA: por ejemplo en cromosoma con counts=[10,1,7] pasar alguno de los 
         # 7 atributos en consecuente al antecedente, en lugar de quitarlos de la regla.
-        c_aux = Chromosome(intervalos, transacciones, dataset)
+        c_aux = Chromosome(intervalos, transacciones)
         counts = c_aux.count_transactions()
         #print(counts)
         if counts[1]==0:
             idx = random.choice([i for i, x in enumerate(transacciones) if x == 0])
             transacciones[idx] = 1 # No actualizamos counts porque no hace falta
-        elif counts[1]>MAX_PER_TYPE[0]:
-            while counts[1] > MAX_PER_TYPE[0]:
+        elif counts[1]>Chromosome.MAX_PER_TYPE[0]:
+            while counts[1] > Chromosome.MAX_PER_TYPE[0]:
                 idx = random.choice([i for i, x in enumerate(transacciones) if x == 0])
                 transacciones[idx] = 0
                 counts[1]-=1
@@ -139,14 +139,14 @@ class Chromosome:
         if counts[2]==0:
             idx = random.choice([i for i, x in enumerate(transacciones) if x == 0])
             transacciones[idx] = 2
-        elif counts[2]>MAX_PER_TYPE[1]:
-            while counts[2] > MAX_PER_TYPE[1]:
+        elif counts[2]>Chromosome.MAX_PER_TYPE[1]:
+            while counts[2] > Chromosome.MAX_PER_TYPE[1]:
                 idx = random.choice([i for i, x in enumerate(transacciones) if x == 0])
                 transacciones[idx] = 0
                 counts[2]-=1
                 counts[0]+=1
         #print(counts)
-        return Chromosome(intervalos, transacciones, dataset)
+        return Chromosome(intervalos, transacciones)
 
     def count_transactions(self):
         contador = [0, 0, 0]  # Inicializamos un contador para transacciones en antecedente y consecuente (resto no aparecen en regla)
@@ -168,9 +168,10 @@ class Chromosome:
 
 
     # Función de evaluación
-    def chromosome_eval(self, dataset):
-        return Metrics.fitness(self, dataset) if dataset is not None else (0.,)
+    def chromosome_eval(self):
+        return Metrics.fitness(self) 
     
+ 
 '''    
     def validate(self, transactions):
         """

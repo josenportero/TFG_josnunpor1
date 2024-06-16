@@ -9,7 +9,7 @@ import seaborn as sns
 from deap import base, creator, tools, algorithms
 from scoop import futures
 
-def log_results(data, pop,  logbook, hof, file_path='C:/Users/Jose/Desktop/TFG/out/results_fitness_esiosv2.txt'):
+def log_results(pop,  logbook, hof, file_path='C:/Users/Jose/Desktop/TFG/out/results_fitness_esiosv2.txt'):
     # Precision, apalancamiento , kulzcynski
     with open(file_path, 'a') as f:
         f.write("Estadísticas de cada generación:\n")
@@ -26,15 +26,15 @@ def log_results(data, pop,  logbook, hof, file_path='C:/Users/Jose/Desktop/TFG/o
             lift = round(ind.support[2] / (ind.support[0] * ind.support[1]), 3) if (ind.support[0] != 0) & (ind.support[1] != 0) else 0.
             gain = round(confidence - ind.support[1],3)  # Calcular ganancia
             conviction = round((1-ind.support[1])/(1-confidence),3)  if confidence!=1. else float('inf') # Calcular convicción
-            coverage_percentage = round(Metrics.measure_recovered(data, [ind]),3)  # Calcular porcentaje de instancias del dataset que cubre
+            coverage_percentage = round(Metrics.measure_recovered([ind]),3)  # Calcular porcentaje de instancias del dataset que cubre MAAAAALLLLLLLL
             normalized_certainty_factor = round(Metrics.calculate_certainty_factor(ind),3)  # Calcular factor de certeza normalizado
             fitness = np.round(ind.fitness.values, 2)
             f.write(f"{ind};{support};{confidence};{lift};{gain};{conviction};{coverage_percentage};{normalized_certainty_factor};{fitness}\n")
 
-        recovp = Metrics.measure_recovered(data, pop)
-        recov = Metrics.measure_recovered(data, hof)
-        f.write(f"El porcentaje total de instancias cubierto por las reglas del Hall Of Fame es {recov*100}% \n")
-        f.write(f"El porcentaje total de instancias cubierto por las reglas (de la última generación) es {recovp*100}% \n")
+        recovp = Metrics.measure_recovered(pop)
+        recov = Metrics.measure_recovered(hof)
+        f.write(f"Recov de las reglas del Hall Of Fame: {recov}% \n")
+        f.write(f"Recov de las reglas de la última generación: {recovp}% \n")
 
 def get_fitness_values(ind):
     return ind.fitness.values if ind.fitness.values is not None else 0.
@@ -47,36 +47,37 @@ def main():
     # Toolbox para configurar los algoritmos genéticos
     toolbox = base.Toolbox()
 
-    ruta_fichero = "C:/Users/Jose/Desktop/TFG/data/datos_TFGb.xlsx"
-
+    #ruta_fichero = "C:/Users/Jose/Desktop/TFG/data/datos_TFGb.xlsx"
     # data =   pd.read_excel("C:/Users/Jose/Desktop/TFG/data/datos_TFG.xlsx", header=0)
     # df = data.drop(data.columns[0], axis=1)
     # df = df.astype(float)
 
-    toolbox.register("dataset", Dataset, ruta=ruta_fichero)
+    toolbox.register("dataset", Dataset)
 
+    recov = 0.
 
-    print(toolbox.dataset().column_ranges)
+    print(toolbox.dataset().dataframe)
+    #print(toolbox.dataset().column_ranges)
     creator.create("Fitness", base.Fitness, weights=(1.0,))
     creator.create("Individual", Chromosome, fitness=creator.Fitness)
 
-    toolbox.register("individual", Chromosome.create_chromosome, dataset=toolbox.dataset())
+    toolbox.register("individual", Chromosome.create_chromosome)
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-    toolbox.register("evaluate", Chromosome.chromosome_eval, dataset=toolbox.dataset())
-    toolbox.register("mate", Operators.crossover, dataset=toolbox.dataset())
-    toolbox.register("mutate", Operators.mutation, dataset=toolbox.dataset())
+    toolbox.register("evaluate", Chromosome.chromosome_eval)
+    toolbox.register("mate", Operators.crossover)
+    toolbox.register("mutate", Operators.mutation)
     toolbox.register("select", tools.selTournament, tournsize=3)
 
     # Evalución paralela para agilizar calculos
     toolbox.register("map", futures.map)
 
 
-    ngen      = 100 # Número de generaciones
-    npop      = 50 # Número de individuos en población
+    ngen = 50 # Número de generaciones
+    npop = 100 # Número de individuos en población
     tol = 0.001  # Umbral de mejora mínima por generación
     convergence_generations = 10   # Número de generaciones en los que buscar convergencia
     pop   = toolbox.population(n=npop)
-    hof_size = 6
+    hof_size = 10
 
     hof   = tools.HallOfFame(hof_size)
 
@@ -108,11 +109,16 @@ def main():
     stats_cf.register("avgCF", np.mean, axis=0)
     stats_cf.register("maxCF", np.max, axis=0)
 
+    # Estadísticas de recov
+    #stats_cf.register("recov", Metrics.measure_recovered, hof)
+
     mstats = tools.MultiStatistics(fitness=stats_fit, support=stats_sup, confidence=stats_conf, cf=stats_cf)
    
     logbook = tools.Logbook()
     logbook.header = "gen", "nevals", "avg", "std", "min", "max", "avgSupport", "maxSupport", "avgConfidence", "maxConfidence", "avgCF", "maxCF"
     
+
+
     # Evaluar individuos con fitness invalido - inicialmente ninguno
     invalid_ind = [ind for ind in pop if not ind.fitness.valid]
     fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
@@ -168,7 +174,10 @@ def main():
 
         # Actualización del hall of fame con los mejores individuos
         hof.update(offspring)
-
+        Metrics.recov = Metrics.measure_recovered(hof)
+        print(Metrics.measure_recovered(hof))
+        print("Medida recuperada por las reglas de la generación anterior", Metrics.recov)
+        
         # Reemplazamos la antigua población por la nueva
         pop[:] = offspring
 
@@ -217,7 +226,7 @@ def main():
     for ind in hof:
         print(ind, " con función de fitness: ", np.round(ind.fitness.values,2))
 
-    log_results(toolbox.dataset(), pop, logbook, hof)
+    log_results(pop, logbook, hof)
 
     # Para dibujar las gráficas de fitness
     fitness_vals = []
@@ -247,8 +256,8 @@ def main():
     plt.show()
 
     plt.figure(figsize=(10, 5))
-    plt.plot(range(1, num_generations + 1), conf_hist, marker='o', linestyle='-', color='g', label='Max. Support')
-    plt.plot(range(1, num_generations + 1), avg_conf_history[:num_generations], marker='x', linestyle='--', color='k', label='Average Support')
+    plt.plot(range(1, num_generations + 1), conf_hist, marker='o', linestyle='-', color='g', label='Max. Confidence')
+    plt.plot(range(1, num_generations + 1), avg_conf_history[:num_generations], marker='x', linestyle='--', color='k', label='Average Confidence')
     plt.title('Confianza del Mejor Individuo y Promedio por Generación')
     plt.xlabel('Número de Generación')
     plt.ylabel('Confianza')
@@ -257,8 +266,8 @@ def main():
     plt.show()
 
     plt.figure(figsize=(10, 5))
-    plt.plot(range(1, num_generations + 1), cf_hist, marker='o', linestyle='-', color='g', label='Max. Support')
-    plt.plot(range(1, num_generations + 1), avg_cf_history[:num_generations], marker='x', linestyle='--', color='k', label='Average Support')
+    plt.plot(range(1, num_generations + 1), cf_hist, marker='o', linestyle='-', color='g', label='Max. CF')
+    plt.plot(range(1, num_generations + 1), avg_cf_history[:num_generations], marker='x', linestyle='--', color='k', label='Average XF')
     plt.title('CF del Mejor Individuo y Promedio por Generación')
     plt.xlabel('Número de Generación')
     plt.ylabel('CF')

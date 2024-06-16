@@ -1,19 +1,20 @@
 import random
 #from deap import base, creator, tools
 from chromosome_simple import Chromosome
+from dataset import Dataset
 import pandas as pd
 
 ###### CONSTANTES A DEFINIR ########
-MUTATION_TYPE_PROB = 0.33 # Probabilidad de mutacion de tipo de transaccion en cromosoma
-MUTATION_INTERVAL_PROB = 0.33 # Probabilidad de mutacion en extremos del intervalo
-MIN_MAX_LIST = [] # Lista con los valores maximo y minimo por atributo - NO SE PUEDEN REBASAR
-MAX_PER_TYPE = [2,2] # Lista con el número de atributos máximo que queremos en antecedente y consecuente
+#MUTATION_TYPE_PROB = 0.33 # Probabilidad de mutacion de tipo de transaccion en cromosoma
+#MUTATION_INTERVAL_PROB = 0.33 # Probabilidad de mutacion en extremos del intervalo
+#MIN_MAX_LIST = [] # Lista con los valores maximo y minimo por atributo - NO SE PUEDEN REBASAR
+#MAX_PER_TYPE = [2,2] # Lista con el número de atributos máximo que queremos en antecedente y consecuente
 
 class Operators:
 
 
     @staticmethod
-    def crossover(ind1, ind2, dataset):
+    def crossover(ind1, ind2):
         '''
         Operador cruce tal y como aparece descrito en el paper, ligeramente modificado para devolver dos hijos
         en lugar de uno. El proceso del cruce es como sigue:
@@ -25,8 +26,7 @@ class Operators:
         intervalo del tipo [l_i, u_i] donde l_i < u_i). Al hijo segundo se asignan los dos extremos restantes
         (ordenandolos tambien de manera identica).
         - Si el tipo de transaccion en el gen es distinto, a un hijo se le asignara el tipo y los intervalos
-        del primer padre, y al otro el tipo y los intervalos del segundo padre.
-                
+        del primer padre, y al otro el tipo y los intervalos del segundo padre.     
  
         '''
         intervalos1 = []
@@ -67,13 +67,13 @@ class Operators:
                 transacciones2.append(t_z2)
 
         if Operators.check_valid_chromosome(transacciones1) and Operators.check_valid_chromosome(transacciones2):
-            return (Chromosome(intervalos1, transacciones1, dataset),Chromosome(intervalos2, transacciones2, dataset))
-        return Operators.crossover(ind1,ind2,dataset)
+            return (Chromosome(intervalos1, transacciones1),Chromosome(intervalos2, transacciones2))
+        return Operators.crossover(ind1,ind2)
 
     @staticmethod
-    def mutation(ind, dataset):
+    def mutation(ind):
         # Mutación tipo
-        # print("Cromosoma sin mutar: \n")
+        #print(f"Cromosoma sin mutar: {ind}\n")
         # print("Intervalos: ", ind.intervals)
         # print("Transacciones: ", ind.transactions)
 
@@ -83,17 +83,21 @@ class Operators:
             # print("Mutación en el gen: ", i)
             if t_i == 0:
                 #print(ind.counter_transaction_type)
-                pmt = Operators.possible_mutation_types(ind.counter_transaction_type, dataset)
+                pmt = Operators.possible_mutation_types(ind.counter_transaction_type)
                 t_i = random.choice(pmt)
                 ind.counter_transaction_type[t_i] += 1 # El contador de número de transacciones del cromosoma sube
-            else:
+                ind.counter_transaction_type[0]-=1
+            elif t_i == 1:
+                pmt = Operators.possible_mutation_types(ind.counter_transaction_type)
                 ind.counter_transaction_type[t_i] -= 1 # El contador de número de transacciones del cromosoma baja
-                t_i = 0    
+                t_i = random.choice(pmt)
+                ind.counter_transaction_type[t_i] += 1
+                
             ind.transactions[i] = t_i
             #if random.random() < MUTATION_INTERVAL_PROB:
             ### MEJORAR, numero aleatorio entre 0 y .1
-            dif = 0.05*(ind.intervals[2*i+1]-ind.intervals[2*i])
-            ls_sign = Operators.check_boundaries(ind, i, dataset)
+            dif = random.uniform(0, 0.1)*(ind.intervals[2*i+1]-ind.intervals[2*i])
+            ls_sign = Operators.check_boundaries(ind, i)
             sign1 = ls_sign[0]
             sign2 = ls_sign[1]
             tipo_mut = random.choice([0,1,2])
@@ -104,21 +108,23 @@ class Operators:
             else:
                 ind.intervals[2*i] = ind.intervals[2*i]+sign1*dif
                 ind.intervals[2*i+1] = ind.intervals[2*i+1]+sign2*dif
-        # print("Cromosoma mutado: \n")
+        #print("Cromosoma mutado: \n")
         # print("Intervalos: ", ind.intervals)
         # print("Transacciones: ", ind.transactions)
         #ind.transactions = Operators.check_valid_chromosome(ind.transactions)
         if Operators.check_valid_chromosome(ind.transactions):
+            #print(f"Cromosoma mutado: {ind}\n")
             return ind,
-        return Operators.mutation(ind, dataset)
+        else:
+            return Operators.mutation(ind)
     
     @staticmethod
-    def check_boundaries(ind, i, dataset):
+    def check_boundaries(ind, i):
         ''''
         Checkea que al realizar el cambio de extremos en el intervalo del atributo,
         no nos salimos del intervalo deseado.
         '''
-        min_max_ls = Operators.calculate_ranges(dataset)
+        min_max_ls = Operators.calculate_ranges()
         ##print("min max list:", min_max_ls)
         dif = 0.05*(ind.intervals[2*i+1]-ind.intervals[2*i])
         if ind.intervals[2*i]-dif < min_max_ls[2*i] and ind.intervals[2*i+1]+dif > min_max_ls[2*i+1]:
@@ -136,28 +142,26 @@ class Operators:
         return [sign1, sign2]
     
     @staticmethod
-    def possible_mutation_types(ls_count_transactions, dataset):
+    def possible_mutation_types(ls_count_transactions):
         """
         Dado el parámetro MAX_PER_TYPE, devuelve una lista con los valores posibles para la mutación de
         la transacción, asegurándose así que no se superan los límites establecidos de atributos en el
         antecedente y en el consecuente.        
         """
-        if (ls_count_transactions[1] < dataset.max_per_type[0]) & (ls_count_transactions[2] < dataset.max_per_type[1]):
-            res = [1,2]
-        elif ls_count_transactions[1] < dataset.max_per_type[0]:
-            res = [1]
-        elif ls_count_transactions[2] < dataset.max_per_type[1]:
+        if ls_count_transactions[2] < Chromosome.MAX_PER_TYPE[1]:
             res = [2]
+        elif ls_count_transactions[1] < Chromosome.MAX_PER_TYPE[0]:
+            res = [1]
         else:
             res = [0]
         return res
     
-    def calculate_ranges(dataset):
+    def calculate_ranges():
         ls = []
-        for c in dataset.column_ranges:
-            if dataset.column_ranges[c]['type']=='Quantitative':
-                ls.append(dataset.column_ranges[c]['min'])
-                ls.append(dataset.column_ranges[c]['max'])
+        for c in Dataset.column_ranges:
+            if Dataset.column_ranges[c]['type']=='Quantitative':
+                ls.append(Dataset.column_ranges[c]['min'])
+                ls.append(Dataset.column_ranges[c]['max'])
         return ls
     
     def check_valid_chromosome(transactions):
@@ -168,7 +172,7 @@ class Operators:
         # Ensure at least one 1 and one 2 in the transactions list
         antecedents = [t for t in transactions if t == 1]
         consequents = [t for t in transactions if t == 2]
-        if len(antecedents) < 1 or len(antecedents) > MAX_PER_TYPE[0] or len(consequents) < 1 or len(consequents) > MAX_PER_TYPE[1]:
+        if len(antecedents) < 1 or len(antecedents) > Chromosome.MAX_PER_TYPE[0] or len(consequents) < 1 or len(consequents) > Chromosome.MAX_PER_TYPE[1]:
             return False
         return True
 
