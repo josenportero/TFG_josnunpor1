@@ -6,8 +6,8 @@ from dataset import Dataset
 
 class Metrics:
     # sup, conf, cf, recov, ampl, nAttrib
-    W=[0.25,0.05,0.05,0.1,0.2,0.05]
-    recov = 0.
+    W=[0.3,0.2,0.05,0.2,0.25,0.0]
+    recov = [0 for _ in range(Dataset.dataframe.shape[0])]
 
     def calculate_support(individual_values, individual_attribute_types):
         """
@@ -74,7 +74,6 @@ class Metrics:
         #Imprime el tiempo transcurrido
         #print(f"El método tardó {tiempo_transcurrido:.2f} segundos en ejecutarse.")
         return support
-
 
     def calculate_confidence( individual_values, individual_attribute_types):
         """
@@ -158,8 +157,35 @@ class Metrics:
         #agg_plus = Metrics.covered_by_rule(chromosome.intervals, chromosome.types)
         #res = [x or y for x,y in zip(agg_plus, agg)]
         #print(agg)
-        return sum(agg)/n if rules is not None else 0.
+        return agg if rules is not None else 0.
     
+    def average_amplitude(chromosome):
+        """
+        Calcula la amplitud media de los atributos que aparecen en una determinada regla.
+        """
+        agg = [0 for i in range(len(chromosome.types))]
+        cont = 0
+        rang = Metrics.calculate_ranges()
+        for i in range(len(chromosome.types)):
+            if chromosome.types[i]!=0:
+                upper = chromosome.intervals[2*i+1]
+                lower = chromosome.intervals[2*i]
+
+                minim = rang[2*i]
+                maxim = rang[2*i+1]
+                agg[i] = (upper - lower)/(maxim-minim)
+                cont +=1
+        return sum(agg)/cont if cont != 0. else 0.
+        
+    def calculate_ranges():
+        ls = []
+        for c in Dataset.column_ranges:
+            if Dataset.column_ranges[c]['type']=='Quantitative':
+                ls.append(Dataset.column_ranges[c]['min'])
+                ls.append(Dataset.column_ranges[c]['max'])
+        return ls
+
+
     def calculate_certainty_factor(chromosome):
         """
         Calcula el factor de certeza para una regla X => Y en un conjunto de datos.
@@ -200,19 +226,13 @@ class Metrics:
         #lift = aux[2]/(aux[0]*aux[1]) if (aux[0]!=0.) & (aux[1]!=0.) else 0.
   
         cf = Metrics.calculate_certainty_factor(chromosome)
-        
+
+        n = Dataset.dataframe.shape[0]
         recovr = Metrics.measure_recovered([chromosome])
+        already_recovered = sum([1 for i in range(n) if Metrics.recov[i] != 0 and recovr[i] != 0])/n
         nAttrib = sum([e for i,e in enumerate(chromosome.counter_types) if i>0])
-        grouped_ls = [[chromosome.intervals[i], chromosome.intervals[i + 1]] for i in range(0, len(chromosome.intervals), 2)]
-        agg = [0 for _ in range(len(grouped_ls))]
-        for i in range(len(grouped_ls)):
-            if chromosome.types[i]!=0:
-                agg[i] = grouped_ls[i][1]-grouped_ls[i][0]
-        non_zero_t = (len(agg)-sum(1 for i in range(len(agg)) if agg[i]==0)) 
-        ampl_total = sum(agg)/non_zero_t if non_zero_t != 0. else 0.
-        max_ampl = max(agg)
-        ampl = ampl_total/(max_ampl) if max_ampl != 0. else 0.
+        ampl = Metrics.average_amplitude(chromosome)
         #print('nAttrib: ',nAttrib)
         #print(ampl)
         #print(w[0]*sup + w[1]*conf + w[3]*nAttrib  -w[4]*ampl,)
-        return Metrics.W[0]*sup + Metrics.W[1]*conf + Metrics.W[2]*cf -Metrics.W[3]*(Metrics.recov+recovr)- Metrics.W[4]*ampl+Metrics.W[5]*nAttrib,
+        return Metrics.W[0]*sup + Metrics.W[1]*conf + Metrics.W[2]*cf -Metrics.W[3]*(already_recovered)- Metrics.W[4]*ampl+Metrics.W[5]*nAttrib,

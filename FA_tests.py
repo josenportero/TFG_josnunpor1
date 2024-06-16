@@ -1,7 +1,7 @@
 from chromosome_simple import Chromosome
 from operators_simple import Operators
 from metrics_simple import Metrics
-from dataset import Dataset
+from dataset_fa import Dataset
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -9,33 +9,33 @@ import seaborn as sns
 from deap import base, creator, tools, algorithms
 from scoop import futures
 
-def log_results(data, pop, logbook, hof, file_path='C:/Users/Jose/Desktop/TFG/out/results_fitness.txt'):
-    # Precision, apalancamiento, kulzcynski
-    with open(file_path, 'a') as f:
-        f.write("Estadísticas de cada generación:\n")
-        for record in logbook:
-            f.write(f"Gen: {record['gen']} - Avg: {record['avg']} - Std: {record['std']} - Min: {record['min']} - Max: {record['max']}\n")
-        f.write("\nMejores individuos en el Hall of Fame:\n")
-        for ind in hof:
-            f.write(f"{ind} - Fitness: {np.round(ind.fitness.values, 2)}\n")
-        f.write("\n")
+# def log_results( pop, logbook, hof, file_path='C:/Users/Jose/Desktop/TFG/out/results_fa.txt'):
+#     # Precision, apalancamiento, kulzcynski
+#     with open(file_path, 'a') as f:
+#         f.write("Estadísticas de cada generación:\n")
+#         for record in logbook:
+#             f.write(f"Gen: {record['gen']} - Avg: {record['avg']} - Std: {record['std']} - Min: {record['min']} - Max: {record['max']}\n")
+#         f.write("\nMejores individuos en el Hall of Fame:\n")
+#         for ind in hof:
+#             f.write(f"{ind} - Fitness: {np.round(ind.fitness.values, 2)}\n")
+#         f.write("\n")
 
-        f.write("Métricas de la última generación:\n")
-        f.write("Individuo;Soporte;Confianza;Lift;Ganancia;Convicción;Porcentaje de instancias cubiertas;Factor de certeza normalizado\n")
-        i = 0
-        for ind in pop:
-            i += 1
-            support = ind.support[2]
-            confidence = ind.support[2] / ind.support[0] if ind.support[0] != 0 else 0.
-            lift = ind.support[2] / (ind.support[0] * ind.support[1]) if (ind.support[0] != 0) & (ind.support[1] != 0) else 0.
-            gain = confidence - ind.support[1]  # Calcular ganancia
-            conviction = (1 - ind.support[1]) / (1 - confidence) if confidence != 1. else float('inf')  # Calcular convicción
-            coverage_percentage = Metrics.measure_recovered(data, [ind])  # Calcular porcentaje de instancias del dataset que cubre
-            normalized_certainty_factor = Metrics.calculate_certainty_factor(data, ind.intervals, ind.transactions)  # Calcular factor de certeza normalizado
-            f.write(f"{i};{support};{confidence};{lift};{gain};{conviction};{coverage_percentage};{normalized_certainty_factor}\n")
+#         f.write("Métricas de la última generación:\n")
+#         f.write("Individuo;Soporte;Confianza;Lift;Ganancia;Convicción;Porcentaje de instancias cubiertas;Factor de certeza normalizado\n")
+#         i = 0
+#         for ind in hof:
+#             i += 1
+#             support = ind.support[2]
+#             confidence = ind.support[2] / ind.support[0] if ind.support[0] != 0 else 0.
+#             lift = ind.support[2] / (ind.support[0] * ind.support[1]) if (ind.support[0] != 0) & (ind.support[1] != 0) else 0.
+#             gain = confidence - ind.support[1]  # Calcular ganancia
+#             conviction = (1 - ind.support[1]) / (1 - confidence) if confidence != 1. else float('inf')  # Calcular convicción
+#             coverage_percentage = Metrics.measure_recovered([ind])  # Calcular porcentaje de instancias del dataset que cubre
+#             normalized_certainty_factor = Metrics.calculate_certainty_factor(ind.intervals, ind.types)  # Calcular factor de certeza normalizado
+#             f.write(f"{i};{support};{confidence};{lift};{gain};{conviction};{coverage_percentage};{normalized_certainty_factor}\n")
 
-        recov = Metrics.measure_recovered(data, pop)
-        f.write(f"El porcentaje total de instancias cubierto por las reglas es {recov * 100}% \n")
+#         recov = Metrics.measure_recovered(pop)
+#         f.write(f"El porcentaje total de instancias cubierto por las reglas es {recov * 100}% \n")
 
 def get_fitness_values(ind):
     return ind.fitness.values if ind.fitness.values is not None else 0.
@@ -58,29 +58,27 @@ def main():
     
     df = pd.DataFrame(data)
 
-    w = [0.5, 0.5, 0.0, 0.0, 0.0]
-
-    toolbox.register("dataset", Dataset, dataframe=df)
-    print(toolbox.dataset().column_ranges)
-
+    toolbox.register("dataset", Dataset)
+    #print(toolbox.dataset().dataframe)
+    #print(toolbox.dataset().column_ranges)
     creator.create("Fitness", base.Fitness, weights=(1.0,))
     creator.create("Individual", Chromosome, fitness=creator.Fitness)
 
-    toolbox.register("individual", Chromosome.create_chromosome, dataset=toolbox.dataset())
+    toolbox.register("individual", Chromosome.create_chromosome)
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-    toolbox.register("evaluate", Chromosome.chromosome_eval, dataset=toolbox.dataset())
-    toolbox.register("mate", Operators.crossover, dataset=toolbox.dataset())
-    toolbox.register("mutate", Operators.mutation, dataset=toolbox.dataset())
+    toolbox.register("evaluate", Chromosome.chromosome_eval)
+    toolbox.register("mate", Operators.crossover)
+    toolbox.register("mutate", Operators.mutation)
     toolbox.register("select", tools.selTournament, tournsize=3)
 
     toolbox.register("map", futures.map)
 
     ngen = 100  # Número de generaciones
-    npop = 50  # Número de individuos en población
+    npop = 100  # Número de individuos en población
     tol = 0.001  # Umbral de mejora mínima por generación
     convergence_generations = 10  # Número de generaciones en los que buscar convergencia
     pop = toolbox.population(n=npop)
-    hof_size = 6
+    hof_size = 10
 
     hof = tools.HallOfFame(hof_size)
 
@@ -120,6 +118,7 @@ def main():
 
     # Inicialmente, hof deberá estar vacío    
     hof.update(pop)
+    Metrics.recov = Metrics.measure_recovered(hof)
 
     best_ind = tools.selBest(pop, 1)[0]
     sup_best = best_ind.support[2]
@@ -161,7 +160,7 @@ def main():
 
         # Actualización del hall of fame con los mejores individuos
         hof.update(offspring)
-
+        Metrics.recov = Metrics.measure_recovered(hof)
         # Reemplazamos la antigua población por la nueva
         pop[:] = offspring
 
@@ -208,7 +207,7 @@ def main():
     for ind in hof:
         print(ind, " con función de fitness: ", np.round(ind.fitness.values,2))
 
-    log_results(toolbox.dataset(), pop, logbook, hof)
+    #log_results(toolbox.dataset(), pop, logbook, hof)
 
     # Para dibujar las gráficas de fitness
     fitness_vals = []

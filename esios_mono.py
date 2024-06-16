@@ -19,6 +19,7 @@ def log_results(pop,  logbook, hof, file_path='C:/Users/Jose/Desktop/TFG/out/res
         f.write("Métricas del Hall Of Fame:\n")
         f.write("Individuo;Soporte;Confianza;Lift;Ganancia;Convicción;Porcentaje de instancias cubiertas;Factor de certeza normalizado; Fitness\n")
         i=0
+        n=Dataset.dataframe.shape[0]
         for ind in hof:
             i+=1
             support = round(ind.support[2],3)
@@ -26,15 +27,15 @@ def log_results(pop,  logbook, hof, file_path='C:/Users/Jose/Desktop/TFG/out/res
             lift = round(ind.support[2] / (ind.support[0] * ind.support[1]), 3) if (ind.support[0] != 0) & (ind.support[1] != 0) else 0.
             gain = round(confidence - ind.support[1],3)  # Calcular ganancia
             conviction = round((1-ind.support[1])/(1-confidence),3)  if confidence!=1. else float('inf') # Calcular convicción
-            coverage_percentage = round(Metrics.measure_recovered([ind]),3)  # Calcular porcentaje de instancias del dataset que cubre MAAAAALLLLLLLL
+            coverage_percentage = round(sum(Metrics.measure_recovered([ind]))/n,3) 
             normalized_certainty_factor = round(Metrics.calculate_certainty_factor(ind),3)  # Calcular factor de certeza normalizado
             fitness = np.round(ind.fitness.values, 2)
             f.write(f"{ind};{support};{confidence};{lift};{gain};{conviction};{coverage_percentage};{normalized_certainty_factor};{fitness}\n")
 
-        recovp = Metrics.measure_recovered(pop)
-        recov = Metrics.measure_recovered(hof)
-        f.write(f"Recov de las reglas del Hall Of Fame: {recov}% \n")
-        f.write(f"Recov de las reglas de la última generación: {recovp}% \n")
+        recovp = sum(Metrics.measure_recovered(pop))/n
+        recov = sum(Metrics.measure_recovered(hof))/n
+        f.write(f"Porcentaje de cubrimiento de las reglas del Hall Of Fame: {recov} \n")
+        f.write(f"Porcentaje de cubrimiento de las reglas de la última generación: {recovp} \n")
 
 def get_fitness_values(ind):
     return ind.fitness.values if ind.fitness.values is not None else 0.
@@ -72,7 +73,7 @@ def main():
 
 
     ngen = 50 # Número de generaciones
-    npop = 50 # Número de individuos en población
+    npop = 10 # Número de individuos en población
     tol = 0.001  # Umbral de mejora mínima por generación
     convergence_generations = 10   # Número de generaciones en los que buscar convergencia
     pop   = toolbox.population(n=npop)
@@ -175,8 +176,8 @@ def main():
         # Actualización del hall of fame con los mejores individuos
         hof.update(offspring)
         Metrics.recov = Metrics.measure_recovered(hof)
-        print(Metrics.measure_recovered(hof))
-        print("Medida recuperada por las reglas de la generación anterior", Metrics.recov)
+        #print(Metrics.measure_recovered(hof))
+        #print("Medida recuperada por las reglas de la generación anterior", Metrics.recov)
 
         # Reemplazamos la antigua población por la nueva
         pop[:] = offspring

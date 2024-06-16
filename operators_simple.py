@@ -94,10 +94,11 @@ class Operators:
                 ind.counter_types[t_i] += 1
                 
             ind.types[i] = t_i
+
             #if random.random() < MUTATION_INTERVAL_PROB:
             ### MEJORAR, numero aleatorio entre 0 y .1
             dif = random.uniform(0, 0.1)*(ind.intervals[2*i+1]-ind.intervals[2*i])
-            ls_sign = Operators.check_boundaries(ind, i)
+            ls_sign = Operators.check_boundaries(ind, i, dif)
             sign1 = ls_sign[0]
             sign2 = ls_sign[1]
             tipo_mut = random.choice([0,1,2])
@@ -119,14 +120,13 @@ class Operators:
             return Operators.mutation(ind)
     
     @staticmethod
-    def check_boundaries(ind, i):
+    def check_boundaries(ind, i, dif):
         ''''
         Checkea que al realizar el cambio de extremos en el intervalo del atributo,
         no nos salimos del intervalo deseado.
         '''
         min_max_ls = Operators.calculate_ranges()
-        ##print("min max list:", min_max_ls)
-        dif = random.uniform(0, 0.1)*(ind.intervals[2*i+1]-ind.intervals[2*i])
+        #print("min max list:", min_max_ls)
         if ind.intervals[2*i]-dif < min_max_ls[2*i] and ind.intervals[2*i+1]+dif > min_max_ls[2*i+1]:
             sign1 = +1       
             sign2 = -1
