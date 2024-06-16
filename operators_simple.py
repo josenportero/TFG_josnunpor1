@@ -33,10 +33,10 @@ class Operators:
         transacciones1 = []
         intervalos2 = []
         transacciones2 = []
-        n = len(ind1.transactions)
+        n = len(ind1.types)
         #for _ in range(MAX_ATTEMPTS):
         for i in range(n):
-            if ind1.transactions[i] == ind2.transactions[i]:
+            if ind1.types[i] == ind2.types[i]:
                 lower_z1 = random.choice([ind1.intervals[2*i], ind2.intervals[2*i]])
                 upper_z1 = random.choice([ind1.intervals[2*i+1], ind2.intervals[2*i+1]])
                 lower_z2 = ind1.intervals[2*i] if lower_z1 == ind2.intervals[2*i] else ind2.intervals[2*i]
@@ -45,13 +45,13 @@ class Operators:
                 int2 = [lower_z2, upper_z2] if lower_z2 < upper_z2 else [upper_z2, lower_z2]
 
                 intervalos1.extend(int1)
-                transacciones1.append(ind1.transactions[i])
+                transacciones1.append(ind1.types[i])
                 intervalos2.extend(int2)
-                transacciones2.append(ind2.transactions[i])
+                transacciones2.append(ind2.types[i])
             else:
-                t_z1 = random.choice([ind1.transactions[i], ind2.transactions[i]])
-                t_z2 = ind1.transactions[i] if t_z1 == ind2.transactions[i] else ind2.transactions[i]
-                if t_z1 == ind1.transactions[i]:
+                t_z1 = random.choice([ind1.types[i], ind2.types[i]])
+                t_z2 = ind1.types[i] if t_z1 == ind2.types[i] else ind2.types[i]
+                if t_z1 == ind1.types[i]:
                     lower_z1 = ind1.intervals[2*i]
                     upper_z1 = ind1.intervals[2*i+1]
                     lower_z2 = ind2.intervals[2*i]
@@ -75,25 +75,25 @@ class Operators:
         # Mutación tipo
         #print(f"Cromosoma sin mutar: {ind}\n")
         # print("Intervalos: ", ind.intervals)
-        # print("Transacciones: ", ind.transactions)
+        # print("Transacciones: ", ind.types)
 
-        for i in range(len(ind.transactions)):
+        for i in range(len(ind.types)):
             #if random.random() < MUTATION_TYPE_PROB:
-            t_i  = ind.transactions[i]
+            t_i  = ind.types[i]
             # print("Mutación en el gen: ", i)
             if t_i == 0:
-                #print(ind.counter_transaction_type)
-                pmt = Operators.possible_mutation_types(ind.counter_transaction_type)
+                #print(ind.counter_types)
+                pmt = Operators.possible_mutation_types(ind.counter_types)
                 t_i = random.choice(pmt)
-                ind.counter_transaction_type[t_i] += 1 # El contador de número de transacciones del cromosoma sube
-                ind.counter_transaction_type[0]-=1
+                ind.counter_types[t_i] += 1 # El contador de número de tipos del cromosoma sube
+                ind.counter_types[0]-=1
             elif t_i == 1:
-                pmt = Operators.possible_mutation_types(ind.counter_transaction_type)
-                ind.counter_transaction_type[t_i] -= 1 # El contador de número de transacciones del cromosoma baja
+                pmt = Operators.possible_mutation_types(ind.counter_types)
+                ind.counter_types[t_i] -= 1 # El contador de número de tipos del cromosoma baja
                 t_i = random.choice(pmt)
-                ind.counter_transaction_type[t_i] += 1
+                ind.counter_types[t_i] += 1
                 
-            ind.transactions[i] = t_i
+            ind.types[i] = t_i
             #if random.random() < MUTATION_INTERVAL_PROB:
             ### MEJORAR, numero aleatorio entre 0 y .1
             dif = random.uniform(0, 0.1)*(ind.intervals[2*i+1]-ind.intervals[2*i])
@@ -110,9 +110,9 @@ class Operators:
                 ind.intervals[2*i+1] = ind.intervals[2*i+1]+sign2*dif
         #print("Cromosoma mutado: \n")
         # print("Intervalos: ", ind.intervals)
-        # print("Transacciones: ", ind.transactions)
-        #ind.transactions = Operators.check_valid_chromosome(ind.transactions)
-        if Operators.check_valid_chromosome(ind.transactions):
+        # print("Transacciones: ", ind.types)
+        #ind.types = Operators.check_valid_chromosome(ind.types)
+        if Operators.check_valid_chromosome(ind.types):
             #print(f"Cromosoma mutado: {ind}\n")
             return ind,
         else:
@@ -142,15 +142,15 @@ class Operators:
         return [sign1, sign2]
     
     @staticmethod
-    def possible_mutation_types(ls_count_transactions):
+    def possible_mutation_types(ls_counts):
         """
         Dado el parámetro MAX_PER_TYPE, devuelve una lista con los valores posibles para la mutación de
         la transacción, asegurándose así que no se superan los límites establecidos de atributos en el
         antecedente y en el consecuente.        
         """
-        if ls_count_transactions[2] < Chromosome.MAX_PER_TYPE[1]:
+        if ls_counts[2] < Chromosome.MAX_PER_TYPE[1]:
             res = [2]
-        elif ls_count_transactions[1] < Chromosome.MAX_PER_TYPE[0]:
+        elif ls_counts[1] < Chromosome.MAX_PER_TYPE[0]:
             res = [1]
         else:
             res = [0]
@@ -164,14 +164,14 @@ class Operators:
                 ls.append(Dataset.column_ranges[c]['max'])
         return ls
     
-    def check_valid_chromosome(transactions):
+    def check_valid_chromosome(types):
         '''
         Método que se asegura de que todo cromosoma sea válido y tenga 'sentido', i.e.
         que tenga al menos un atributo en antecedente y otro en consecuente.
         '''
-        # Ensure at least one 1 and one 2 in the transactions list
-        antecedents = [t for t in transactions if t == 1]
-        consequents = [t for t in transactions if t == 2]
+        # Ensure at least one 1 and one 2 in the types list
+        antecedents = [t for t in types if t == 1]
+        consequents = [t for t in types if t == 2]
         if len(antecedents) < 1 or len(antecedents) > Chromosome.MAX_PER_TYPE[0] or len(consequents) < 1 or len(consequents) > Chromosome.MAX_PER_TYPE[1]:
             return False
         return True

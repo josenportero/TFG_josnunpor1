@@ -51,12 +51,12 @@ def calculate_column_ranges(dataframe):
         column_data = dataframe[column]
         column_type = str(column_data.dtype)  # Tipo de dato de la columna
         if column=='precio':
-            column_ranges[column] = {'type': 'Quantitative', 'min': column_data.min(), 'max': column_data.max(), 'possible transactions':[2]}
+            column_ranges[column] = {'type': 'Quantitative', 'min': column_data.min(), 'max': column_data.max(), 'possible types':[2]}
 
         elif column_type == 'object':
-            column_ranges[column] = {'type': 'Not quantitative', 'values': column_data.unique(), 'possible transactions': [0,1]}
+            column_ranges[column] = {'type': 'Not quantitative', 'values': column_data.unique(), 'possible types': [0,1]}
         else:
-            column_ranges[column] = {'type': 'Quantitative', 'min': column_data.min(), 'max': column_data.max(), 'possible transactions': [0,1]}
+            column_ranges[column] = {'type': 'Quantitative', 'min': column_data.min(), 'max': column_data.max(), 'possible types': [0,1]}
     return column_ranges
 
 class Dataset:

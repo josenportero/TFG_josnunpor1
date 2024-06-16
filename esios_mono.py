@@ -54,7 +54,6 @@ def main():
 
     toolbox.register("dataset", Dataset)
 
-    recov = 0.
 
     #print(toolbox.dataset().dataframe)
     #print(toolbox.dataset().column_ranges)

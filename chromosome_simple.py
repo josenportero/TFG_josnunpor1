@@ -16,10 +16,10 @@ class Chromosome:
     Para tal fin, dotaremos a cada cromosoma de los siguientes atributos:
         - Intervals: lista de valores reales que, dos a dos, representan los extremos
         inferior y superior de cada atributo en una regla de asociacion.
-        - transactions: lista con tantas posiciones como atributos y que toma los valores
+        - types: lista con tantas posiciones como atributos y que toma los valores
         0, si el atributo correspondiente no aparece en la regla de asociacion, 1 si aparece
         en el antecedente y 2 si aparece en el consecuente.
-        - counter_transaction_types: en base a la lista de transacciones, devuelve una lista
+        - counter_transaction_types: en base a la lista de tipos, devuelve una lista
         de tamaño dos, de tal manera que el primer elemento de la lista representa el numero
         de atributos que en la regla de asociacion aparecen en el antecedente y el segundo,
         el numero de atributos que aparecen en el consecuente.
@@ -31,10 +31,10 @@ class Chromosome:
         se haya establecido.
     '''
     MAX_PER_TYPE = [3,1]
-    def __init__(self, intervals=None, transactions=None):
+    def __init__(self, intervals=None, types=None):
         self.intervals = intervals if intervals else []
-        self.transactions = transactions if transactions else []
-        self.counter_transaction_type = self.count_transactions() 
+        self.types = types if types else []
+        self.counter_types = self.count_types() 
         self.support = []
         self.fitness = creator.Fitness()
         self.fitness.values= Metrics.fitness(self) 
@@ -44,8 +44,8 @@ class Chromosome:
             Modificación del método str para imprimir las reglas de asociación de manera:
             IF atrib1[rango] AND atrib2[rango] THEN atrib3[rango] AND atrib4[rango] 
             '''
-            ant = [i for i in range(len(self.transactions)) if self.transactions[i] == 1]
-            cons = [i for i in range(len(self.transactions)) if self.transactions[i] == 2]
+            ant = [i for i in range(len(self.types)) if self.types[i] == 1]
+            cons = [i for i in range(len(self.types)) if self.types[i] == 2]
             
             a_names = [Dataset.dataframe.columns[e] for e in ant]
             c_names = [Dataset.dataframe.columns[e] for e in cons]
@@ -74,9 +74,9 @@ class Chromosome:
         '''
         if not isinstance(other, Chromosome):
             return False
-        for i in range(len(self.transactions)):
-            if self.transactions[i] != 0 or other.transactions[i] != 0:
-                if self.transactions[i] != other.transactions[i]:
+        for i in range(len(self.types)):
+            if self.types[i] != 0 or other.types[i] != 0:
+                if self.types[i] != other.types[i]:
                     return False
                 if self.intervals[2*i:2*i+2] != other.intervals[2*i:2*i+2]:
                     return False
@@ -84,7 +84,7 @@ class Chromosome:
 
     def create_chromosome():
         intervalos = []
-        transacciones = []
+        tipos = []
         count = [0,0,0]
         for c in Dataset.column_ranges:
             min_val = Dataset.column_ranges[c]['min']
@@ -92,30 +92,30 @@ class Chromosome:
             inf = random.uniform(min_val, max_val)
             sup = random.uniform(inf, max_val)
             intervalos.extend([inf, sup])
-            t = random.choice(Dataset.column_ranges[c]['possible transactions'])
+            t = random.choice(Dataset.column_ranges[c]['possible types'])
             if t == 1 and count[1] < Chromosome.MAX_PER_TYPE[0]:
                 count[1] += 1
-                transacciones.append(t)
+                tipos.append(t)
             elif t == 2 and count[2] < Chromosome.MAX_PER_TYPE[1]:
                 count[2] += 1
-                transacciones.append(t)
+                tipos.append(t)
             else:
                 count[0] += 1
-                transacciones.append(0)
+                tipos.append(0)
 
         if count[1]==0:
-            idx = random.choice([i for i, x in enumerate(transacciones) if x == 0])
-            transacciones[idx] = 1
+            idx = random.choice([i for i, x in enumerate(tipos) if x == 0])
+            tipos[idx] = 1
             count[1] += 1
 
         if count[2]==0:
-            idx = random.choice([i for i, x in enumerate(transacciones) if x == 0])
-            transacciones[idx] = 2
+            idx = random.choice([i for i, x in enumerate(tipos) if x == 0])
+            tipos[idx] = 2
             count[2] += 1
 
-        return Chromosome(intervalos, transacciones)
+        return Chromosome(intervalos, tipos)
     
-    def force_valid(intervalos, transacciones):
+    def force_valid(intervalos, tipos):
         '''
         Método auxiliar, en caso de que los operadores de mutación y cruce no puedan generar un
         individuo válido pasado el número máximo de iteraciones, forzar la creación de uno
@@ -123,36 +123,36 @@ class Chromosome:
         '''
         ### POSIBLE MEJORA: por ejemplo en cromosoma con counts=[10,1,7] pasar alguno de los 
         # 7 atributos en consecuente al antecedente, en lugar de quitarlos de la regla.
-        c_aux = Chromosome(intervalos, transacciones)
-        counts = c_aux.count_transactions()
+        c_aux = Chromosome(intervalos, tipos)
+        counts = c_aux.count_types()
         #print(counts)
         if counts[1]==0:
-            idx = random.choice([i for i, x in enumerate(transacciones) if x == 0])
-            transacciones[idx] = 1 # No actualizamos counts porque no hace falta
+            idx = random.choice([i for i, x in enumerate(tipos) if x == 0])
+            tipos[idx] = 1 # No actualizamos counts porque no hace falta
         elif counts[1]>Chromosome.MAX_PER_TYPE[0]:
             while counts[1] > Chromosome.MAX_PER_TYPE[0]:
-                idx = random.choice([i for i, x in enumerate(transacciones) if x == 0])
-                transacciones[idx] = 0
+                idx = random.choice([i for i, x in enumerate(tipos) if x == 0])
+                tipos[idx] = 0
                 counts[1]-=1
                 counts[0]+=1
 
         if counts[2]==0:
-            idx = random.choice([i for i, x in enumerate(transacciones) if x == 0])
-            transacciones[idx] = 2
+            idx = random.choice([i for i, x in enumerate(tipos) if x == 0])
+            tipos[idx] = 2
         elif counts[2]>Chromosome.MAX_PER_TYPE[1]:
             while counts[2] > Chromosome.MAX_PER_TYPE[1]:
-                idx = random.choice([i for i, x in enumerate(transacciones) if x == 0])
-                transacciones[idx] = 0
+                idx = random.choice([i for i, x in enumerate(tipos) if x == 0])
+                tipos[idx] = 0
                 counts[2]-=1
                 counts[0]+=1
         #print(counts)
-        return Chromosome(intervalos, transacciones)
+        return Chromosome(intervalos, tipos)
 
-    def count_transactions(self):
-        contador = [0, 0, 0]  # Inicializamos un contador para transacciones en antecedente y consecuente (resto no aparecen en regla)
-        for t in self.transactions:
+    def count_types(self):
+        contador = [0, 0, 0]  # Inicializamos un contador para tipos en antecedente y consecuente (resto no aparecen en regla)
+        for t in self.types:
             if t not in [0, 1, 2]:
-                raise ValueError("Las transacciones solo pueden ser 0, 1 o 2")
+                raise ValueError("Las tipos solo pueden ser 0, 1 o 2")
             if t in [0, 1,2]:
                 contador[t]+=1
         return contador
@@ -163,8 +163,8 @@ class Chromosome:
     #     como un atributo propio de la clase Cromosoma, para evitar recalcular constantemente este valor.
     #     '''
     #     intervals = self.intervals
-    #     transactions = self.transactions
-    #     return Metrics.calculate_support(dataset, intervals, transactions) if dataset is not None else []
+    #     types = self.types
+    #     return Metrics.calculate_support(dataset, intervals, types) if dataset is not None else []
 
 
     # Función de evaluación
@@ -173,13 +173,13 @@ class Chromosome:
     
  
 '''    
-    def validate(self, transactions):
+    def validate(self, types):
         """
         Comprobación de que el cromosoma cumple las restricciones que se establecen en el paper de QARGA seccion 2.3 (i.e. 
         representa una regla de asociación con sentido).
         """
-        antecedents = [t for t in transactions if t == 1]
-        consequents = [t for t in transactions if t == 2]
+        antecedents = [t for t in types if t == 1]
+        consequents = [t for t in types if t == 2]
         if len(antecedents) < 1 or len(antecedents) > MAX_PER_TYPE[0] or len(consequents) < 1 or len(consequents) > MAX_PER_TYPE[1]:
             return False
         return True
@@ -229,7 +229,7 @@ toolbox.register("evaluate", Chromosome.chromosome_eval, dataset=df)
 #aptitud_ejemplo = toolbox.evaluate(cromosoma_ejemplo)
 #print("#### CROMOSOMA EJEMPLO ####")
 #print("Primer nivel del cromosoma de ejemplo: ", cromosoma_ejemplo.intervals)
-#print("Segundo nivel del cromosoma de ejemplo:", cromosoma_ejemplo.transactions)
+#print("Segundo nivel del cromosoma de ejemplo:", cromosoma_ejemplo.types)
 #print("Contador por cada tipo de transacción: ", cromosoma_ejemplo.counter_transaction_type)
 #print("Aptitud del cromosoma:", aptitud_ejemplo)
 
