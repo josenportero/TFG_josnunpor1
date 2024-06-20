@@ -64,10 +64,10 @@ class Dataset:
     # Dataframe estático, no varía a lo largo de nuestro problema
     dataframe = data_preprocessing(data)
     column_ranges = calculate_column_ranges(dataframe)
-    
 
 
-#print(Dataset.column_ranges)
+
+#print(Dataset.column_ranges['precio'])
 
 
 '''

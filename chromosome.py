@@ -5,10 +5,11 @@ from dataset import Dataset
 from deap import base
 from deap import creator
 from deap import tools
+import numpy as np
 
 
 #### CONSTANTES DEFINIDAS
-MAX_PER_TYPE = [2,2] # Lista con el número de atributos máximo que queremos en antecedente y consecuente
+ # Lista con el número de atributos máximo que queremos en antecedente y consecuente
 
 class Chromosome:
     '''
@@ -16,10 +17,10 @@ class Chromosome:
     Para tal fin, dotaremos a cada cromosoma de los siguientes atributos:
         - Intervals: lista de valores reales que, dos a dos, representan los extremos
         inferior y superior de cada atributo en una regla de asociacion.
-        - transactions: lista con tantas posiciones como atributos y que toma los valores
+        - types: lista con tantas posiciones como atributos y que toma los valores
         0, si el atributo correspondiente no aparece en la regla de asociacion, 1 si aparece
         en el antecedente y 2 si aparece en el consecuente.
-        - counter_transaction_types: en base a la lista de transacciones, devuelve una lista
+        - counter_transaction_types: en base a la lista de tipos, devuelve una lista
         de tamaño dos, de tal manera que el primer elemento de la lista representa el numero
         de atributos que en la regla de asociacion aparecen en el antecedente y el segundo,
         el numero de atributos que aparecen en el consecuente.
@@ -30,26 +31,29 @@ class Chromosome:
         'medida de bondad' de cada regla de asociacion concreta, en funcion del criterio que
         se haya establecido.
     '''
-
-    def __init__(self, intervals=None, transactions=None, dataset=None, w=[0.2,0.2,0.2,0.2,0.2], NOBJ=5):
+    MULTI = False
+    MAX_PER_TYPE = [3,1]
+    def __init__(self, intervals=None, types=None):
         self.intervals = intervals if intervals else []
-        self.transactions = transactions if transactions else []
-        self.dataset = dataset
-        self.counter_transaction_type = self.count_transactions() 
-        self.support = self.calculate_support(dataset) 
-        self.fitness = creator.FitnessMulti()
-        self.fitness.values= (Metrics.fitness(self, dataset, w)) if dataset is not None else 0.
+        self.types = types if types else []
+        self.counter_types = self.count_types() 
+        self.support = []
+        self.fitness = creator.Fitness()
+        if Chromosome.MULTI == True:
+            self.fitness.values= Metrics.fitness_multi(self)
+        else:
+            self.fitness.values= Metrics.fitness(self) 
 
     def __str__(self):
             '''
             Modificación del método str para imprimir las reglas de asociación de manera:
             IF atrib1[rango] AND atrib2[rango] THEN atrib3[rango] AND atrib4[rango] 
             '''
-            ant = [i for i in range(len(self.transactions)) if self.transactions[i] == 1]
-            cons = [i for i in range(len(self.transactions)) if self.transactions[i] == 2]
+            ant = [i for i in range(len(self.types)) if self.types[i] == 1]
+            cons = [i for i in range(len(self.types)) if self.types[i] == 2]
             
-            a_names = [self.dataset.dataframe.columns[e] for e in ant]
-            c_names = [self.dataset.dataframe.columns[e] for e in cons]
+            a_names = [Dataset.dataframe.columns[e] for e in ant]
+            c_names = [Dataset.dataframe.columns[e] for e in cons]
 
             a_interv = [[self.intervals[2*i], self.intervals[2*i+1]] for i in ant]
             c_interv = [[self.intervals[2*i], self.intervals[2*i+1]] for i in cons]
@@ -75,48 +79,62 @@ class Chromosome:
         '''
         if not isinstance(other, Chromosome):
             return False
-        for i in range(len(self.transactions)):
-            if self.transactions[i] != 0 or other.transactions[i] != 0:
-                if self.transactions[i] != other.transactions[i]:
+        for i in range(len(self.types)):
+            if self.types[i] != 0 or other.types[i] != 0:
+                if self.types[i] != other.types[i]:
                     return False
-                if self.intervals[2*i:2*i+2] != other.intervals[2*i:2*i+2]:
+                if not np.allclose(self.intervals[2*i:2*i+2], other.intervals[2*i:2*i+2], atol=0.01):
                     return False
         return True
 
-    def create_chromosome(dataset):
+    def create_chromosome():
         intervalos = []
-        transacciones = []
+        tipos = [0 for _ in range(len(Dataset.dataframe.columns))]
         count = [0,0,0]
-        for c in dataset.column_ranges:
-            min_val = dataset.column_ranges[c]['min']
-            max_val = dataset.column_ranges[c]['max']
+        possible_cons = [i for i,c in enumerate(Dataset.dataframe.columns) if 2 in Dataset.column_ranges[c]['possible types']]
+        possible_ants = [i for i,c in enumerate(Dataset.dataframe.columns) if (1 in Dataset.column_ranges[c]['possible types'] and c not in possible_cons)]
+
+        index_ants = random.sample(possible_ants, Chromosome.MAX_PER_TYPE[0])
+        index_cons = random.sample(possible_cons, Chromosome.MAX_PER_TYPE[1])
+
+        for i,c in enumerate(Dataset.dataframe.columns):
+            min_val = Dataset.column_ranges[c]['min']
+            max_val = Dataset.column_ranges[c]['max']
             inf = random.uniform(min_val, max_val)
             sup = random.uniform(inf, max_val)
             intervalos.extend([inf, sup])
-            t = random.choice(dataset.column_ranges[c]['possible transactions'])
-            if t == 1 and count[1] < MAX_PER_TYPE[0]:
-                count[1] += 1
-                transacciones.append(t)
-            elif t == 2 and count[2] < MAX_PER_TYPE[1]:
-                count[2] += 1
-                transacciones.append(t)
-            else:
-                count[0] += 1
-                transacciones.append(0)
+            # if c in indexes:
+            #     t = random.choice(Dataset.column_ranges[c]['possible types'])
+            #     if t == 1 and count[1] < Chromosome.MAX_PER_TYPE[0]:
+            #         count[1] += 1
+            #         tipos.append(t)
+            #     elif t == 2 and count[2] < Chromosome.MAX_PER_TYPE[1]:
+            #         count[2] += 1
+            #         tipos.append(t)
+            #     else:
+            #         count[0] += 1
+            #         tipos.append(0)
 
-        if count[1]==0:
-            idx = random.choice([i for i, x in enumerate(transacciones) if x == 0])
-            transacciones[idx] = 1
-            count[1] += 1
+            if i in index_cons:
+                count[2] +=1
+                tipos[i]=2
+            elif i in index_ants:
+                count[1]+=1
+                tipos[i]=1
 
-        if count[2]==0:
-            idx = random.choice([i for i, x in enumerate(transacciones) if x == 0])
-            transacciones[idx] = 2
-            count[2] += 1
+        # if count[1]==0:
+        #     idx = random.choice([i for i, x in enumerate(tipos) if x == 0])
+        #     tipos[idx] = 1
+        #     count[1] += 1
 
-        return Chromosome(intervalos, transacciones, dataset)
+        # if count[2]==0:
+        #     idx = random.choice([i for i, x in enumerate(tipos) if x == 0])
+        #     tipos[idx] = 2
+        #     count[2] += 1
+
+        return Chromosome(intervalos, tipos)
     
-    def force_valid(intervalos, transacciones, dataset):
+    def force_valid(intervalos, tipos):
         '''
         Método auxiliar, en caso de que los operadores de mutación y cruce no puedan generar un
         individuo válido pasado el número máximo de iteraciones, forzar la creación de uno
@@ -124,69 +142,72 @@ class Chromosome:
         '''
         ### POSIBLE MEJORA: por ejemplo en cromosoma con counts=[10,1,7] pasar alguno de los 
         # 7 atributos en consecuente al antecedente, en lugar de quitarlos de la regla.
-        c_aux = Chromosome(intervalos, transacciones, dataset)
-        counts = c_aux.count_transactions()
+        c_aux = Chromosome(intervalos, tipos)
+        counts = c_aux.count_types()
         #print(counts)
         if counts[1]==0:
-            idx = random.choice([i for i, x in enumerate(transacciones) if x == 0])
-            transacciones[idx] = 1 # No actualizamos counts porque no hace falta
-        elif counts[1]>MAX_PER_TYPE[0]:
-            while counts[1] > MAX_PER_TYPE[0]:
-                idx = random.choice([i for i, x in enumerate(transacciones) if x == 0])
-                transacciones[idx] = 0
+            idx = random.choice([i for i, x in enumerate(tipos) if x == 0])
+            tipos[idx] = 1 # No actualizamos counts porque no hace falta
+        elif counts[1]>Chromosome.MAX_PER_TYPE[0]:
+            while counts[1] > Chromosome.MAX_PER_TYPE[0]:
+                idx = random.choice([i for i, x in enumerate(tipos) if x == 0])
+                tipos[idx] = 0
                 counts[1]-=1
                 counts[0]+=1
 
         if counts[2]==0:
-            idx = random.choice([i for i, x in enumerate(transacciones) if x == 0])
-            transacciones[idx] = 2
-        elif counts[2]>MAX_PER_TYPE[1]:
-            while counts[2] > MAX_PER_TYPE[1]:
-                idx = random.choice([i for i, x in enumerate(transacciones) if x == 0])
-                transacciones[idx] = 0
+            idx = random.choice([i for i, x in enumerate(tipos) if x == 0])
+            tipos[idx] = 2
+        elif counts[2]>Chromosome.MAX_PER_TYPE[1]:
+            while counts[2] > Chromosome.MAX_PER_TYPE[1]:
+                idx = random.choice([i for i, x in enumerate(tipos) if x == 0])
+                tipos[idx] = 0
                 counts[2]-=1
                 counts[0]+=1
         #print(counts)
-        return Chromosome(intervalos, transacciones, dataset)
+        return Chromosome(intervalos, tipos)
 
-
-
-    def count_transactions(self):
-        contador = [0, 0, 0]  # Inicializamos un contador para transacciones en antecedente y consecuente (resto no aparecen en regla)
-        for t in self.transactions:
+    def count_types(self):
+        contador = [0, 0, 0]  # Inicializamos un contador para tipos en antecedente y consecuente (resto no aparecen en regla)
+        for t in self.types:
             if t not in [0, 1, 2]:
-                raise ValueError("Las transacciones solo pueden ser 0, 1 o 2")
+                raise ValueError("Las tipos solo pueden ser 0, 1 o 2")
             if t in [0, 1,2]:
                 contador[t]+=1
         return contador
     
-    def calculate_support(self, dataset):
-        '''
-        Mediante la definición de esta función, guardamos el soporte de una regla de asociación (cromosoma)
-        como un atributo propio de la clase Cromosoma, para evitar recalcular constantemente este valor.
-        '''
-        intervals = self.intervals
-        transactions = self.transactions
-        return Metrics.calculate_support(dataset, intervals, transactions) if dataset is not None else []
+    # def calculate_support(self, dataset):
+    #     '''
+    #     Mediante la definición de esta función, guardamos el soporte de una regla de asociación (cromosoma)
+    #     como un atributo propio de la clase Cromosoma, para evitar recalcular constantemente este valor.
+    #     '''
+    #     intervals = self.intervals
+    #     types = self.types
+    #     return Metrics.calculate_support(dataset, intervals, types) if dataset is not None else []
 
 
     # Función de evaluación
-    def chromosome_eval(self, dataset, w):
-        return Metrics.fitness(self, dataset, w) if dataset is not None else (0.,)
+    def chromosome_eval(self):
+        return Metrics.fitness(self)
     
+    # Función de evaluación
+    def chromosome_eval_multi(self):
+        return Metrics.fitness_multi(self) 
     
-    def validate(self):
-        '''
+ 
+'''    
+    def validate(self, types):
+        """
         Comprobación de que el cromosoma cumple las restricciones que se establecen en el paper de QARGA seccion 2.3 (i.e. 
         representa una regla de asociación con sentido).
-        '''
-        antecedents = [t for t in self.transactions if t == 1]
-        consequents = [t for t in self.transactions if t == 2]
+        """
+        antecedents = [t for t in types if t == 1]
+        consequents = [t for t in types if t == 2]
         if len(antecedents) < 1 or len(antecedents) > MAX_PER_TYPE[0] or len(consequents) < 1 or len(consequents) > MAX_PER_TYPE[1]:
             return False
         return True
     
-'''
+
 # Definiciones creator DEAP
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 creator.create("Individual", list, fitness=creator.FitnessMax)
@@ -231,7 +252,7 @@ toolbox.register("evaluate", Chromosome.chromosome_eval, dataset=df)
 #aptitud_ejemplo = toolbox.evaluate(cromosoma_ejemplo)
 #print("#### CROMOSOMA EJEMPLO ####")
 #print("Primer nivel del cromosoma de ejemplo: ", cromosoma_ejemplo.intervals)
-#print("Segundo nivel del cromosoma de ejemplo:", cromosoma_ejemplo.transactions)
+#print("Segundo nivel del cromosoma de ejemplo:", cromosoma_ejemplo.types)
 #print("Contador por cada tipo de transacción: ", cromosoma_ejemplo.counter_transaction_type)
 #print("Aptitud del cromosoma:", aptitud_ejemplo)
 

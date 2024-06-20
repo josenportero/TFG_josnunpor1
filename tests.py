@@ -1,6 +1,6 @@
-from chromosome_simple import Chromosome
-from metrics_simple import Metrics
-from operators_simple import Operators
+from chromosome import Chromosome
+from metrics import Metrics
+from operators import Operators
 from dataset import Dataset
 import pandas as pd
 from deap import base, creator, tools
