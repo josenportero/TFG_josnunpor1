@@ -1,18 +1,31 @@
 import pandas as pd
-
+import matplotlib.pyplot as plt
 
 data =   pd.read_excel("C:/Users/Jose/Desktop/TFG/data/datos_TFGb.xlsx", header=0)
-
+AÑO = 0. # Para tests de rendimiento
 
 def data_preprocessing(data):
     df = data.drop(data.columns[0], axis=1)
+
+    # Creamos nuevas columnas 'año', 'mes' y 'dia'
+    df['año'] = df['fecha'].dt.year
+    df['mes'] = df['fecha'].dt.month
+    df['dia'] = df['fecha'].dt.day
+
+    # Quitamos la columna 'fecha' original si no es necesaria
+    df = df.drop('fecha', axis=1)
+
+    if AÑO!=0.:
+        # Para tests los registros del año 2022
+        df = df[(df['año'] == 2022) | ((df['año'] == 2023) & (df['mes'] < 7))] #
+        #df = df[df['mes'] < 7]
 
     df['temp_media_Sevilla'] = (df['tmin_Sevilla'] + df['tmax_Sevilla']) / 2
     df['temp_media_Barcelona'] = (df['tmin_Barcelona'] + df['tmax_Barcelona']) / 2
     df['temp_media_Madrid'] = (df['tmin_Madrid'] + df['tmax_Madrid']) / 2
     df['temp_media_Valencia'] = (df['tmin_Valencia'] + df['tmax_Valencia']) / 2
 
-    # Luego, calculamos la temperatura media en España
+    # Calculamos la temperatura media 'aprox' en España
     df['temp_media_Ciudades'] = (
         df['temp_media_Sevilla'] +
         df['temp_media_Barcelona'] +
@@ -20,7 +33,7 @@ def data_preprocessing(data):
         df['temp_media_Valencia']
     ) / 4
 
-    # Opcional: puedes eliminar las columnas intermedias si ya no las necesitas
+    # Eliminación de las columnas intermedias
     df.drop([
         'tmin_Sevilla', 'tmax_Sevilla',
         'tmin_Barcelona', 'tmax_Barcelona',
@@ -30,8 +43,7 @@ def data_preprocessing(data):
         'temp_media_Madrid', 'temp_media_Valencia'
     ], axis=1, inplace=True)
 
-    df.drop(['fecha'],axis=1, inplace=True)
-
+    
     return df
 
 def minmax_norm(df):
@@ -67,9 +79,15 @@ class Dataset:
 
 
 
+# Histograma valores precio
+# Dataset.dataframe['precio'].hist(bins=150)
+# plt.xlabel('Valor')
+# plt.ylabel('Frecuencia')
+# plt.title('Histograma de precio')
+# plt.show()
+
 #print(Dataset.column_ranges['precio'])
-
-
+#print(Dataset.dataframe)
 '''
 datos_prueb = Dataset()
 

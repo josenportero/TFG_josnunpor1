@@ -8,12 +8,11 @@ from dataset import Dataset
 
 class Metrics:
     # sup, conf, cf, recov, ampl, nAttrib
-    W=[1., 0.005 , 0.005 , 0.4, 0.0] #0.59 originalmente
-
+    #W=[1., 0.005 , 0.005 , 0.4, 0.0] #0.59 originalmente
+    W =[0.5,0.5,0.,0.]
     recov = [0 for _ in range(Dataset.dataframe.shape[0])]
-    HOF = tools.HallOfFame(5)
-    t_np = 0.
-    t = 0.
+    # t_np = 0.
+    # t = 0.
 
     #n_support = 0
 
@@ -97,10 +96,9 @@ class Metrics:
         - support: Lista que contiene el soporte del antecedente, consecuente y regla en ese orden.
         """
         # Convertir el DataFrame a una matriz numpy para mejorar la velocidad de acceso
-        # time1 = time.time()
+        #time1 = time.time()
         #Metrics.n_support +=1 
         df_np = Dataset.dataframe.to_numpy()
-        
         # Inicializar matrices booleanas para antecedente y consecuente
         verifyAnt = np.ones(df_np.shape[0], dtype=bool)
         verifyCons = np.ones(df_np.shape[0], dtype=bool)
@@ -117,8 +115,8 @@ class Metrics:
         support_cons = np.sum(verifyCons) / df_np.shape[0]
         support_rule = np.sum(verifyAnt & verifyCons) / df_np.shape[0]
 
-        # fin1 = time.time()
-        # print(f'Ha tardado {fin1-time1} segundos')
+        #fin1 = time.time()
+        #print(f'Ha tardado {fin1-time1} segundos')
         return [support_ant, support_cons, support_rule]
 
     def calculate_confidence( chromosome):
@@ -168,19 +166,16 @@ class Metrics:
         Salida:
         - covered: Lista de booleanos que indica si cada instancia del dataset está cubierta por la regla.
         """
-        covered = []
-        for i in range(Dataset.dataframe.shape[0]):
-            res = True
-            for c in range(len(Dataset.dataframe.columns)):
-                if individual_attribute_types[c] != 0:
-                    value = Dataset.dataframe.iloc[i, c]
-                    lower_bound = individual_values[c * 2]
-                    upper_bound = individual_values[c * 2 + 1]
-                    if (lower_bound > value) or (upper_bound < value):
-                        res = False
-                        break
-            covered.append(res)
-        return covered
+        data = Dataset.dataframe.to_numpy()
+        covered = pd.Series([True] * data.shape[0])
+
+        for c in range(data.shape[1]):
+            if individual_attribute_types[c] != 0:
+                lower_bound = individual_values[c * 2]
+                upper_bound = individual_values[c * 2 + 1]
+                covered &= (data[:, c] >= lower_bound) & (data[:, c] <= upper_bound)
+
+        return covered.tolist()
 
     def measure_recovered(rules):
         """
@@ -195,17 +190,13 @@ class Metrics:
         de las contenidas en la lista.
         """
         n = Dataset.dataframe.shape[0]
-        agg = [0 for _ in range(n)]
+        agg = np.zeros(n, dtype=int)
+
         if rules is not None:
             for rule in rules:
                 cov = Metrics.covered_by_rule(rule.intervals, rule.types)
-                agg = [x+y for x,y in zip(cov, agg)]
-        #agg_plus = Metrics.covered_by_rule(chromosome.intervals, chromosome.types)
-        #res = [x or y for x,y in zip(agg_plus, agg)]
-        #print(agg)
-        #recov_by_hof = sum([1 for i in range(n) if agg[i]>1])
-        #print(f'Recubiertos por el hof: {recov_by_hof}')
-        return agg if rules is not None else 0.
+                agg += np.array(cov, dtype=int)
+        return agg.tolist() if rules is not None else [0] * n
     
     def average_amplitude(chromosome):
         """
@@ -233,6 +224,20 @@ class Metrics:
                 ls.append(Dataset.column_ranges[c]['min'])
                 ls.append(Dataset.column_ranges[c]['max'])
         return ls
+
+    def calculate_conviction(chromosome):
+        confidence = Metrics.calculate_confidence(chromosome)
+        conviction = round((1-chromosome.support[1])/(1-confidence),3)  if confidence!=1. else float('inf') # Calcular convicción
+        return conviction
+    
+    def calculate_leverage(chromosome):
+        lev = chromosome.support[2]-chromosome.support[1]*chromosome.support[0]
+        return lev
+
+    def calculate_gain(chromosome):
+        confidence = Metrics.calculate_confidence(chromosome)
+        gain = confidence - chromosome.support[1]
+        return gain
 
     def calculate_certainty_factor(chromosome):
         """
@@ -333,13 +338,14 @@ class Metrics:
         """
         Cálculo de la función fitness tal y como aparece en el paper 'QARGA'
         """
-        if len(chromosome.support)==0:
+        if not chromosome.fitness.valid or len(chromosome.support)==0:
             #inicio =time.time()
             #aux = Metrics.calculate_support(chromosome.intervals, chromosome.types)
             #fin = time.time()
             #Metrics.t += fin-inicio
             #inicio2 =time.time()
             aux2 = Metrics.calculate_supportv2(chromosome.intervals,chromosome.types)
+            #print(aux2)
             #fin2 = time.time()
             #Metrics.t_np += fin2-inicio2
             chromosome.support = aux2
@@ -349,27 +355,28 @@ class Metrics:
         conf = aux2[2]/aux2[0] if aux2[0]!=0. else 0.
         #lift = aux2[2]/(aux2[0]*aux2[1]) if (aux2[0]!=0.) & (aux2[1]!=0.) else 0.
   
-        cf = Metrics.calculate_certainty_factor(chromosome)
+        # cf = Metrics.calculate_certainty_factor(chromosome)
 
-        n = Dataset.dataframe.shape[0]
-        recovered_by_rule = Metrics.measure_recovered([chromosome])
-        recubiertos = sum([1 for i in range(n) if Metrics.recov[i] + recovered_by_rule[i] > 1])/n
-        #pseudo_recov = Metrics.pseudo_recov(Metrics.HOF, chromosome)
+        # n = Dataset.dataframe.shape[0]
+        # recovered_by_rule = Metrics.covered_by_rule(chromosome.intervals, chromosome.types)
+        # lsaux = [i+j for i,j in zip(Metrics.recov, recovered_by_rule)]
+        # recubiertos = sum([e for e in lsaux if e>1])/n
+        # #pseudo_recov = Metrics.pseudo_recov(Metrics.HOF, chromosome)
         #print(f'Recubiertos={recubiertos}')
         #conviction = (1-chromosome.support[1])/(1-conf)  if conf!=1. else float('inf')
         #nAttrib = sum([e for i,e in enumerate(chromosome.counter_types) if i>0])
         #ampl = Metrics.average_amplitude(chromosome)
         #print('nAttrib: ',nAttrib)
-        #chisq = Metrics.calculate_chi_squared(chromosome)
+        chisq = Metrics.calculate_chi_squared(chromosome)
         #print(ampl)
-        return Metrics.W[0]*sup+Metrics.W[1]*conf+Metrics.W[2]*cf-Metrics.W[3]*recubiertos,
+        return Metrics.W[0]*sup+Metrics.W[1]*conf,#+Metrics.W[2]*cf-Metrics.W[3]*recubiertos,
         # return Metrics.W[0]*sup + Metrics.W[1]*conf + Metrics.W[2]*cf - Metrics.W[3]*recubiertos,#Metrics.W[4]*Metrics.average_amplitude(chromosome),
 
     def fitness_multi(chromosome):
         """
         Cálculo de la función fitness tal y como aparece en el paper 'QARGA'
         """
-        if len(chromosome.support)==0:
+        if not chromosome.fitness.valid or len(chromosome.support)==0:
             aux = Metrics.calculate_supportv2(chromosome.intervals, chromosome.types)
             chromosome.support = aux
         else:
@@ -378,16 +385,20 @@ class Metrics:
         conf = aux[2]/aux[0] if aux[0]!=0. else 0.
         #lift = aux[2]/(aux[0]*aux[1]) if (aux[0]!=0.) & (aux[1]!=0.) else 0.
 
-        lev = sup - aux[1]*aux[0]
+        #lev = sup - aux[1]*aux[0]
+
         #lift = Metrics.calculate_lift(chromosome)
         #gain = Metrics.calculate_gain(chromosome)
-        # cf = Metrics.calculate_certainty_factor(chromosome)
-        #conviction = (1-chromosome.support[1])/(1-conf)  if conf!=1. else float('inf')
-        #n = Dataset.dataframe.shape[0]
-        #recovered_by_rule = Metrics.measure_recovered([chromosome])
-        #recubiertos = sum([1 for i in range(n) if Metrics.recov[i] + recovered_by_rule[i] > 1])/n
+        cf = Metrics.calculate_certainty_factor(chromosome)
+        #conv = (1-chromosome.support[1])/(1-conf)  if conf!=1. else float('inf')
+        #chisq = Metrics.calculate_chi_squared(chromosome)
+
+        n = Dataset.dataframe.shape[0]
+        recovered_by_rule = Metrics.covered_by_rule(chromosome.intervals, chromosome.types)
+        lsaux = [i+j for i,j in zip(Metrics.recov, recovered_by_rule)]
+        recubiertos = sum([e for e in lsaux if e>1])/n
         #nAttrib = sum([e for i,e in enumerate(chromosome.counter_types) if i>0])
         #ampl = Metrics.average_amplitude(chromosome)
         #print('nAttrib: ',nAttrib)
         #print(ampl)
-        return sup, lev #(recov) #- Metrics.W[4]*ampl+Metrics.W[5]*nAttrib,
+        return  sup,conf #(recov) #- Metrics.W[4]*ampl+Metrics.W[5]*nAttrib,
