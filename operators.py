@@ -177,6 +177,12 @@ class Operators:
             return False
         return True
 
+    # Para valorar la calidad de las reglas devueltas en función de los rangos globales de los atributos - Comentado   
+ls = Operators.calculate_ranges()
+i=0
+for c in Dataset.dataframe.columns:
+    print(f'Para la columna {c} el rango es [{ls[i]},{ls[i+1]}]')
+    i+=2
 '''
     NO HACE FALTA CON LA NUEVA CLASE DATASET
     def calculate_ranges(dataset):

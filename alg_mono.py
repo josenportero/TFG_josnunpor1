@@ -79,51 +79,50 @@ stats_cf.register("maxCF", np.max, axis=0)
 # Estadísticas de recov
 mstats = tools.MultiStatistics(fitness=stats_fit, support=stats_sup, confidence=stats_conf, cf=stats_cf)
 
-def log_results(pop,  logbook, hof, npop, inicio, fin, file_path='C:/Users/Jose/Desktop/TFG/out/comparativa_escalado_datos.txt'):
+def log_results(pop,  logbook, hof, npop, inicio, fin, file_path='C:/Users/Jose/Desktop/TFG/out/prueba.txt'):
     # Precision, apalancamiento , kulzcynski
     with open(file_path, 'a') as f:
         f.write('\n##################################################\n')
         f.write('\n PRUEBAS RENDIMIENTO \n')
         f.write('\n##################################################\n')
-        # f.write(f'Objetivos probados: soporte, confianza, cf, recov \n')
+        f.write(f'Objetivos probados: soporte, confianza, cf, recov \n')
         f.write(f'Pruebas con {NPOP} individuos\n')
         f.write(f'Pruebas con {Dataset.dataframe.shape[0]} instancias del dataset')
         f.write(f'Tiempo total de ejecución del algoritmo MONO-OBJETIVO: {fin-inicio} segundos \n')
-        # f.write(f'Vector de pesos para el fitness: {Metrics.W}\n')
+        f.write(f'Vector de pesos para el fitness: {Metrics.W}\n')
         # f.write("Estadísticas de cada generación:\n")
-        # for record in logbook:
-        #     f.write(f"Gen: {record['gen']} - Avg: {record['avg']} - Std: {record['std']} - Min: {record['min']} - Max: {record['max']}\n")
+        for record in logbook:
+            f.write(f"Gen: {record['gen']} - Avg: {record['avg']} - Std: {record['std']} - Min: {record['min']} - Max: {record['max']}\n")
 
-        # f.write("Métricas del Hall Of Fame:\n")
+        f.write("Métricas del Hall Of Fame:\n")
         f.write("ID;Soporte;Confianza;Lift;Leverage;Ganancia;Conviccion;Recov;Chi-sq;CF;Fitness\n")
         j=0
         i=0
         n=Dataset.dataframe.shape[0]
 
-        # f.write(f'ID; INDIVIDUO\n')
-        # for ind in hof:
-        #     f.write(f'{i}; {ind} \n')
-        #     i+=1
+        f.write(f'ID; INDIVIDUO\n')
+        for ind in hof:
+            f.write(f'{i}; {ind} \n')
+            i+=1
 
-        # for ind in pop:
-            
-        #     support = round(ind.support[2],3)
-        #     confidence = round(ind.support[2] / ind.support[0], 3) if ind.support[0] != 0 else 0.
-        #     lift = round(ind.support[2] / (ind.support[0] * ind.support[1]), 3) if (ind.support[0] != 0) & (ind.support[1] != 0) else 0.
-        #     gain = round(confidence - ind.support[1],3)  # Calcular ganancia
-        #     conviction = round((1-ind.support[1])/(1-confidence),3)  if confidence!=1. else float('inf') # Calcular convicción
-        #     lev = round(support-ind.support[1]*ind.support[0], 3)
-        #     coverage = round(sum(Metrics.measure_recovered([ind])),3)/n
-        #     chisq = Metrics.calculate_chi_squared(ind) 
-        #     normalized_certainty_factor = round(Metrics.calculate_certainty_factor(ind),3)  # Calcular factor de certeza normalizado
-        #     fitness = np.round(ind.fitness.values, 2)
-        #     f.write(f"{j};{support};{confidence};{lift};{lev};{gain};{conviction};{coverage};{chisq};{normalized_certainty_factor};{fitness}\n")
-        #     j+=1
+        for ind in pop:            
+            support = round(ind.support[2],3)
+            confidence = round(ind.support[2] / ind.support[0], 3) if ind.support[0] != 0 else 0.
+            lift = round(ind.support[2] / (ind.support[0] * ind.support[1]), 3) if (ind.support[0] != 0) & (ind.support[1] != 0) else 0.
+            gain = round(confidence - ind.support[1],3)  # Calcular ganancia
+            conviction = round((1-ind.support[1])/(1-confidence),3)  if confidence!=1. else float('inf') # Calcular convicción
+            lev = round(support-ind.support[1]*ind.support[0], 3)
+            coverage = round(sum(Metrics.measure_recovered([ind])),3)/n
+            chisq = Metrics.calculate_chi_squared(ind) 
+            normalized_certainty_factor = round(Metrics.calculate_certainty_factor(ind),3)  # Calcular factor de certeza normalizado
+            fitness = np.round(ind.fitness.values, 2)
+            f.write(f"{j};{support};{confidence};{lift};{lev};{gain};{conviction};{coverage};{chisq};{normalized_certainty_factor};{fitness}\n")
+            j+=1
 
-        # recovp = sum(Metrics.measure_recovered(pop))
-        # recov = sum(Metrics.measure_recovered(hof))
-        # f.write(f"Número de veces que se repiten instancias en hof: {recov} \n")
-        # f.write(f"Número de veces que se repiten instancias en población: {recovp} \n")
+        recovp = sum(Metrics.measure_recovered(pop))
+        recov = sum(Metrics.measure_recovered(hof))
+        f.write(f"Número de veces que se repiten instancias en hof: {recov} \n")
+        f.write(f"Número de veces que se repiten instancias en población: {recovp} \n")
 
 
 def get_fitness_values(ind):
@@ -241,16 +240,16 @@ def main():
 
 
             # Convergencia cuando no se produzca mejora razonable en fitness de mejor individuo de 
-            # la poblacion en un número determinado de generaciones (convergence_generations) - Comentado para pruebas de rendimiento
-            # if gen >= CONVERGENCE_GENERATIONS:
-            #     recent_fitness = fitness_history[-CONVERGENCE_GENERATIONS:]
-            #     recent_avg_fitness = avg_fitness_history[-CONVERGENCE_GENERATIONS:]
-            #     if max(recent_fitness) - min(recent_fitness) < TOL:
-            #         print(f"Parada por convergencia de mejor individuo en generacion: {gen}")
-            #         break
-            #     if max(recent_avg_fitness) - min(recent_avg_fitness) < TOL:
-            #         print(f"Parada por convergencia de fitness medio en generacion: {gen}")
-            #         break
+            # la poblacion en un número determinado de generaciones (convergence_generations) 
+            if gen >= CONVERGENCE_GENERATIONS:
+                recent_fitness = fitness_history[-CONVERGENCE_GENERATIONS:]
+                recent_avg_fitness = avg_fitness_history[-CONVERGENCE_GENERATIONS:]
+                if max(recent_fitness) - min(recent_fitness) < TOL:
+                    print(f"Parada por convergencia de mejor individuo en generacion: {gen}")
+                    break
+                if max(recent_avg_fitness) - min(recent_avg_fitness) < TOL:
+                    print(f"Parada por convergencia de fitness medio en generacion: {gen}")
+                    break
         
 
         ### IRL - enfoque
@@ -267,26 +266,27 @@ def main():
 
 
     time2 = time.time()
-    print('Mejores individuos en el Hall Of Fame: \n')
-    for ind in hof:
-        print(ind, " con función de fitness: ", np.round(ind.fitness.values,2))
+    # print('Mejores individuos en el Hall Of Fame: \n')
+    # for ind in hof:
+    #     print(ind, " con función de fitness: ", np.round(ind.fitness.values,2))
 
+    # Guardar los resultados en fichero
     log_results(pop, logbook, best_rules, NPOP, time1, time2)
 
-    # Para dibujar las gráficas de fitness
+    ##### METODOS PARA MOSTRAR GRAFICAS INFORMATIVAS CON LA EVOLUCION DE LA POBLACION
     fitness_vals = []
     for _, ind in enumerate(ls, start=1):
         fitness_vals.append(ind.fitness.values[0])
 
-        
-    ls = Operators.calculate_ranges()
-    i=0
-    for c in Dataset.dataframe.columns:
-        print(f'Para la columna {c} el rango es [{ls[i]},{ls[i+1]}]')
-        i+=2
+    # Para valorar la calidad de las reglas devueltas en función de los rangos globales de los atributos - Comentado   
+    # ls = Operators.calculate_ranges()
+    # i=0
+    # for c in Dataset.dataframe.columns:
+    #     print(f'Para la columna {c} el rango es [{ls[i]},{ls[i+1]}]')
+    #     i+=2
 
-    # Plots
-    num_generations = len(fitness_vals)  # Ajuste del número de generaciones consideradas
+    # Graficas de fitness, soporte, confianza y cf
+    num_generations = len(fitness_vals)  
     plt.figure(figsize=(10, 5))
     plt.plot(range(1, num_generations + 1), fitness_vals, marker='o', linestyle='-', color='b', label='Fitness mejor individuo')
     plt.plot(range(1, num_generations + 1), avg_fitness_history[:num_generations], marker='x', linestyle='--', color='r', label='Fitness medio')

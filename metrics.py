@@ -153,7 +153,7 @@ class Metrics:
         soportes = chromosome.support
         return soportes[2]/(soportes[0]*soportes[1]) if (soportes[0]!=0.) & (soportes[1]!=0.) else 0.
 
-    def covered_by_rule(individual_values, individual_attribute_types):
+    def covered_by_rule(chromosome):
         """
         Determina qué ejemplos determinados del dataset son cubiertos o no por una regla.
         ---------------------------------------------------------------------------------
@@ -170,9 +170,9 @@ class Metrics:
         covered = pd.Series([True] * data.shape[0])
 
         for c in range(data.shape[1]):
-            if individual_attribute_types[c] != 0:
-                lower_bound = individual_values[c * 2]
-                upper_bound = individual_values[c * 2 + 1]
+            if chromosome.types[c] != 0:
+                lower_bound = chromosome.intervals[c * 2]
+                upper_bound = chromosome.intervals[c * 2 + 1]
                 covered &= (data[:, c] >= lower_bound) & (data[:, c] <= upper_bound)
 
         return covered.tolist()
@@ -194,7 +194,7 @@ class Metrics:
 
         if rules is not None:
             for rule in rules:
-                cov = Metrics.covered_by_rule(rule.intervals, rule.types)
+                cov = Metrics.covered_by_rule(rule)
                 agg += np.array(cov, dtype=int)
         return agg.tolist() if rules is not None else [0] * n
     
@@ -358,7 +358,7 @@ class Metrics:
         # cf = Metrics.calculate_certainty_factor(chromosome)
 
         # n = Dataset.dataframe.shape[0]
-        # recovered_by_rule = Metrics.covered_by_rule(chromosome.intervals, chromosome.types)
+        # recovered_by_rule = Metrics.covered_by_rule(chromosome)
         # lsaux = [i+j for i,j in zip(Metrics.recov, recovered_by_rule)]
         # recubiertos = sum([e for e in lsaux if e>1])/n
         # #pseudo_recov = Metrics.pseudo_recov(Metrics.HOF, chromosome)
@@ -393,12 +393,12 @@ class Metrics:
         #conv = (1-chromosome.support[1])/(1-conf)  if conf!=1. else float('inf')
         #chisq = Metrics.calculate_chi_squared(chromosome)
 
-        n = Dataset.dataframe.shape[0]
-        recovered_by_rule = Metrics.covered_by_rule(chromosome.intervals, chromosome.types)
-        lsaux = [i+j for i,j in zip(Metrics.recov, recovered_by_rule)]
-        recubiertos = sum([e for e in lsaux if e>1])/n
+        # n = Dataset.dataframe.shape[0]
+        # recovered_by_rule = Metrics.covered_by_rule(chromosome)
+        # lsaux = [i+j for i,j in zip(Metrics.recov, recovered_by_rule)]
+        # recubiertos = sum([e for e in lsaux if e>1])/n
         #nAttrib = sum([e for i,e in enumerate(chromosome.counter_types) if i>0])
-        #ampl = Metrics.average_amplitude(chromosome)
+        ampl = Metrics.average_amplitude(chromosome)
         #print('nAttrib: ',nAttrib)
         #print(ampl)
-        return  sup,conf #(recov) #- Metrics.W[4]*ampl+Metrics.W[5]*nAttrib,
+        return  sup,conf,cf,ampl #(recov) #- Metrics.W[4]*ampl+Metrics.W[5]*nAttrib,

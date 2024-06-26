@@ -2,29 +2,33 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 from deap import algorithms, base, creator, tools
-from deap.benchmarks.tools import igd
+import pandas as pd 
 from scoop import futures
 from chromosome import Chromosome
 from operators import Operators
 from metrics import Metrics
 from dataset import Dataset
+from itertools import combinations
 
-NOBJ = 3  # Número de objetivos
-MU = 1000  # Tamaño de la población
+
+
+NOBJ = 4  # Número de objetivos
+MU = 500  # Tamaño de la población
 NGEN = 50  # Número de generaciones
 CXPB = 0.8  # Probabilidad de cruce
 MUTPB = 0.1  # Probabilidad de mutación
-HOF_SIZE = int(np.trunc(MU * 0.1))
+HOF_SIZE = int(np.trunc(MU * 0.1)) # tamaño de HOF definido como 10% del tamaño de la poblacion
+MAXEXE = 10 # número máximo de ejecuciones del algoritmo (IRL)
 
-# Crear puntos de referencia uniformes
-ref_points = tools.uniform_reference_points(NOBJ, 12)
+# Crear puntos de referencia uniformes para NSGAIII
+ref_points = tools.uniform_reference_points(NOBJ, 20)
 
 # Inicialización DEAP
 toolbox = base.Toolbox()
 
 toolbox.register("dataset", Dataset)
 
-creator.create("Fitness", base.Fitness, weights=(1., 1., 1.))
+creator.create("Fitness", base.Fitness, weights=(1., 1., 1.,-1.))
 creator.create("Individual", Chromosome, fitness=creator.Fitness)
 
 toolbox.register("individual", Chromosome.create_chromosome)
@@ -41,12 +45,15 @@ initial_pop = np.array([ind.fitness.values for ind in pop])
 toolbox.register("select", tools.selNSGA3, ref_points=ref_points)
 toolbox.register("map", futures.map)
 
-def log_results(pop, logbook, hof, inicio, fin, file_path='C:/Users/Jose/Desktop/TFG/out/results_multi_2.txt'):
+def log_results(pop, logbook, hof, inicio, fin, file_path='C:/Users/Jose/Desktop/TFG/out/pruebas_mo_3.txt'):
+    """"
+    Guarda estadísticas sobre la ejecución en un fichero a modo de log
+    """
     with open(file_path, 'a') as f:
         f.write('\n##################################################\n')
         f.write('\n PRUEBAS PARA TEST MULTIOBJETIVO \n')
         f.write('\n##################################################\n')
-        f.write(f'Objetivos probados: (soporte, confianza, cf) \n')
+        f.write(f'Objetivos probados: (soporte, confianza, cf, ampl) \n')
         f.write(f'Pruebas con {MU} individuos y {NGEN} generaciones \n')
         f.write(f'Tiempo total de ejecución del algoritmo {fin - inicio} segundos \n')
         f.write("Estadísticas de cada generación:\n")
@@ -60,11 +67,11 @@ def log_results(pop, logbook, hof, inicio, fin, file_path='C:/Users/Jose/Desktop
         n = Dataset.dataframe.shape[0]
 
         f.write(f'ID; INDIVIDUO\n')
-        for ind in hof_aprox:
+        for ind in hof:
             f.write(f'{i}; {ind} \n')
             i += 1
 
-        for ind in hof_aprox:
+        for ind in hof:
             support = round(ind.support[2], 3)
             confidence = round(ind.support[2] / ind.support[0], 3) if ind.support[0] != 0 else 0.
             lift = round(ind.support[2] / (ind.support[0] * ind.support[1]), 3) if (ind.support[0] != 0) & (ind.support[1] != 0) else 0.
@@ -107,115 +114,138 @@ def main(seed=None):
     logbook = tools.Logbook()
     logbook.header = "gen", "nevals", "avg", "std", "min", "max", "avgSup", "bestSup", "avgConf", "bestConf","avgCF", "bestCF"
 
-    hof_aprox = tools.ParetoFront()
-    pop = toolbox.population(n=MU)
+    num_exe=0
+    irl_individuals = []
+    while num_exe < MAXEXE:
+        # Inicializacion de la poblacion y el hof
+        
+        
+        hof_aprox = tools.ParetoFront()
+        pop = toolbox.population(n=MU)
 
-    invalid_ind = [ind for ind in pop if not ind.fitness.valid]
-    fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
-    for ind, fit in zip(invalid_ind, fitnesses):
-        ind.fitness.values = fit
 
-    hof_aprox.update(pop)
-    best_inds = tools.selNSGA3(pop, HOF_SIZE, ref_points)
-
-    sup_evol = []
-    conf_evol = []
-    cf_evol = []
-    pop_evol=[]
-
-    best_ind = hof_aprox[0]
-    sup_best = best_ind.support[2]
-    conf_best = Metrics.calculate_confidence(best_ind)
-    cf_best = Metrics.calculate_certainty_factor(best_ind)
-    #lev_best = Metrics.calculate_leverage(best_ind)
-
-    record = mstats.compile(pop)
-    sup_evol.append(round(record['support']['avg'], 2))
-    conf_evol.append(round(record['confidence']['avg'], 2))
-    cf_evol.append(round(record['cf']['avg'], 2))
-    logbook.record(gen=0, nevals=len(invalid_ind), avg=np.round((record['fitness']['avg']), 2), std=np.round((record['fitness']['std']), 2),
-                   min=np.round((record['fitness']['min']), 2),
-                   max=np.round((record['fitness']['max']), 2),
-                   avgSup=round(record['support']['avg'], 2), bestSup=round(sup_best, 2),
-                   avgConf=round(record['confidence']['avg'], 2), bestConf=round(conf_best, 2),
-                   avgCF=round(record['cf']['avg'], 2), bestCF=round(cf_best, 2)
-                   )
-
-    print(logbook.stream)
-
-    for gen in range(1, NGEN):
-        offspring = toolbox.select(pop, MU - (HOF_SIZE))
-        offspring = algorithms.varAnd(offspring, toolbox, CXPB, MUTPB)
-        invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
+        # Asignacion de fitness a los cromosomas
+        invalid_ind = [ind for ind in pop if not ind.fitness.valid]
         fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
         for ind, fit in zip(invalid_ind, fitnesses):
             ind.fitness.values = fit
 
-        offspring.extend(best_inds)
-
-        hof_aprox.update(offspring)
-
-        pop[:] = offspring
-
+        # Actualizamos hof y guardamos los mejores individuos
+        hof_aprox.update(pop)
         best_inds = tools.selNSGA3(pop, HOF_SIZE, ref_points)
+
+
+        ### Para guardar y mostrar estadisticas de la evolucion
+        sup_evol = []
+        conf_evol = []
+        cf_evol = []
+        pop_evol=[]
+
         best_ind = hof_aprox[0]
         sup_best = best_ind.support[2]
         conf_best = Metrics.calculate_confidence(best_ind)
         cf_best = Metrics.calculate_certainty_factor(best_ind)
-        #lev_best = Metrics.calculate_gain(best_ind)
-
-        if (gen%10==0):
-            pop_evol.extend(pop)
-            for i in pop_evol:
-                print(i)
-        
-        
+        #lev_best = Metrics.calculate_leverage(best_ind)
 
         record = mstats.compile(pop)
         sup_evol.append(round(record['support']['avg'], 2))
         conf_evol.append(round(record['confidence']['avg'], 2))
         cf_evol.append(round(record['cf']['avg'], 2))
-        logbook.record(gen=gen, nevals=len(invalid_ind), avg=np.round((record['fitness']['avg']), 2), std=np.round((record['fitness']['std']), 2),
+        logbook.record(gen=0, nevals=len(invalid_ind), avg=np.round((record['fitness']['avg']), 2), std=np.round((record['fitness']['std']), 2),
                     min=np.round((record['fitness']['min']), 2),
                     max=np.round((record['fitness']['max']), 2),
                     avgSup=round(record['support']['avg'], 2), bestSup=round(sup_best, 2),
                     avgConf=round(record['confidence']['avg'], 2), bestConf=round(conf_best, 2),
                     avgCF=round(record['cf']['avg'], 2), bestCF=round(cf_best, 2)
                     )
-        print(logbook.stream)
-        print(len(pop))
 
-    return pop, logbook, hof_aprox, sup_evol, conf_evol, cf_evol
+        print(logbook.stream)
+
+        # Bucle del proceso evolutivo
+        for gen in range(1, NGEN):
+            offspring = toolbox.select(pop, MU - (HOF_SIZE))
+            offspring = algorithms.varAnd(offspring, toolbox, CXPB, MUTPB)
+            invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
+            fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
+            for ind, fit in zip(invalid_ind, fitnesses):
+                ind.fitness.values = fit
+
+            offspring.extend(best_inds)
+
+            hof_aprox.update(offspring)
+
+            pop[:] = offspring
+
+            best_inds = tools.selNSGA3(pop, HOF_SIZE, ref_points)
+            best_ind = hof_aprox[0]
+            sup_best = best_ind.support[2]
+            conf_best = Metrics.calculate_confidence(best_ind)
+            cf_best = Metrics.calculate_certainty_factor(best_ind)
+            #lev_best = Metrics.calculate_gain(best_ind)
+
+            # if (gen%10==0):
+            #     pop_evol.extend(pop)
+            #     for i in pop_evol:
+            #         print(i)
+            
+            
+
+            record = mstats.compile(pop)
+            sup_evol.append(round(record['support']['avg'], 2))
+            conf_evol.append(round(record['confidence']['avg'], 2))
+            cf_evol.append(round(record['cf']['avg'], 2))
+            logbook.record(gen=gen, nevals=len(invalid_ind), avg=np.round((record['fitness']['avg']), 2), std=np.round((record['fitness']['std']), 2),
+                        min=np.round((record['fitness']['min']), 2),
+                        max=np.round((record['fitness']['max']), 2),
+                        avgSup=round(record['support']['avg'], 2), bestSup=round(sup_best, 2),
+                        avgConf=round(record['confidence']['avg'], 2), bestConf=round(conf_best, 2),
+                        avgCF=round(record['cf']['avg'], 2), bestCF=round(cf_best, 2)
+                        )
+            print(logbook.stream)
+            #print(len(pop))
+        irl_individuals.append(tools.selNSGA3(hof_aprox,1,ref_points)[0])
+        Metrics.recov = Metrics.measure_recovered(irl_individuals)
+        num_exe+=1
+
+    return pop, logbook, hof_aprox, sup_evol, conf_evol, cf_evol, irl_individuals
 
 
 if __name__ == "__main__":
     inicio = time.time()
-    pop, stats, hof_aprox, sup_evol, conf_evol, cf_evol = main()
+    pop, stats, hof_aprox, sup_evol, conf_evol, cf_evol, irl_individuals = main()
     pop_fit = np.array([ind.fitness.values for ind in pop])
     fin = time.time()
 
-    log_results(pop, stats, hof_aprox, inicio, fin)
+    log_results(pop, stats, irl_individuals, inicio, fin)
 
-    # Plot generations in different colors
+    
+   # Listado de variables
+variables = ['Soporte', 'Confianza', 'CF', 'Recov']
 
-    fig = plt.figure(figsize=(7, 7))
-    ax = fig.add_subplot(111, projection='3d')  # Crear gráfico 3D
+# Generar todas las combinaciones posibles de tres variables
+combinations_of_three = list(combinations(variables, 3))
 
-    p = np.array([ind.fitness.values for ind in pop])
-    ax.scatter(p[:, 0], p[:, 1], p[:, 2], marker="o", s=24, label="Poblacion Final")
-
-    # Población inicial
-    ax.scatter(initial_pop[:, 0], initial_pop[:, 1], initial_pop[:, 2], marker="o", s=24, label="Poblacion Inicial", alpha=0.6)
-
-    # hof _aprox como aproximación a la frontera de pareto
-    pareto_front = np.array([ind.fitness.values for ind in hof_aprox])
-    ax.scatter(pareto_front[:, 0], pareto_front[:, 1], pareto_front[:, 2], marker="x", c="r", s=32, label="Frente de Pareto Aproximado")
-
-    ax.set_xlabel("Soporte")
-    ax.set_ylabel("Confianza")
-    ax.set_zlabel("CF")
+# Crear gráficos 3D para cada combinación de tres variables
+for combo in combinations_of_three:
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    
+    x_idx = variables.index(combo[0])
+    y_idx = variables.index(combo[1])
+    z_idx = variables.index(combo[2])
+    
+    ax.scatter(pop_fit[:, x_idx], pop_fit[:, y_idx], pop_fit[:, z_idx], marker="o", s=24, label="Poblacion Final")
+    ax.scatter(initial_pop[:, x_idx], initial_pop[:, y_idx], initial_pop[:, z_idx], marker="o", s=24, label="Poblacion Inicial", alpha=0.6)
+    ax.scatter([ind.fitness.values[x_idx] for ind in hof_aprox], 
+               [ind.fitness.values[y_idx] for ind in hof_aprox], 
+               [ind.fitness.values[z_idx] for ind in hof_aprox], marker="x", c="r", s=32, label="Frente de Pareto Aproximado")
+    
+    ax.set_xlabel(combo[0])
+    ax.set_ylabel(combo[1])
+    ax.set_zlabel(combo[2])
     ax.legend()
-    plt.tight_layout()
+
+    plt.title(f'Visualización 3D de Soluciones de Optimización Multiobjetivo ({combo[0]}, {combo[1]}, {combo[2]})')
     plt.show()
 
     # Gráfica para la evolución del soporte medio
@@ -243,3 +273,4 @@ if __name__ == "__main__":
     ax.legend()
     plt.tight_layout()
     plt.show()
+

@@ -8,6 +8,9 @@ from deap import base, creator, tools
 
 
 class Tests:
+    """
+    Para comprobar la integración de las clases entre si y con DEAP - CLASE ANTICUADA ACTUALMENTE
+    """
 
     def chromosome_test(toolbox):
         cromosoma_ejemplo = toolbox.individual()
@@ -25,8 +28,8 @@ class Tests:
         return cromosoma_ejemplo
     
     def dataset_test(toolbox):
-        print("Dataframe: ", toolbox.dataset().dataframe)
-        print("Diccionario de constraints por atributo: ", toolbox.dataset().column_ranges)
+        print("Dataframe: ", Dataset.dataframe)
+        print("Diccionario de constraints por atributo: ", Dataset.dataframe.column_ranges)
 
     def operators_test(toolbox, ind1, ind2, dataset):
         print("Antes del cruce:")
@@ -35,7 +38,7 @@ class Tests:
         print("Individuo 2 - Intervalos:", ind2.intervals)
         print("Individuo 2 - Transacciones:", ind2.transactions)
 
-        ind_cruce = toolbox.mate(ind1, ind2,dataset)
+        ind_cruce = toolbox.mate(ind1, ind2)
 
         print("\nDespués del cruce:")
         print("Individuo Cruce 1 - Intervalos:", ind_cruce[0].intervals)
@@ -51,13 +54,13 @@ class Tests:
     def metrics_test(toolbox, c, w):
         print("\n Cromosoma ")
         print(c)
-        print("Soporte: ", Metrics.calculate_support(toolbox.dataset(), c.intervals, c.transactions))
-        print("Confianza de la regla: ", Metrics.calculate_confidence(toolbox.dataset(), c.intervals, c.transactions))
-        print("Lift: ", Metrics.calculate_lift(toolbox.dataset(), c.intervals, c.transactions))
-        print("Instancias que 'cubre' la regla: ", Metrics.covered_by_rule(toolbox.dataset(), c.intervals, c.transactions))
-        print("Recov: ", Metrics.measure_recovered(toolbox.dataset(), [c]))
-        print("Factor de certeza normalizado: ", Metrics.calculate_certainty_factor(toolbox.dataset(), c.intervals, c.transactions))
-        print('Fitness: ', Metrics.fitness(c, toolbox.dataset(), w))
+        print("Soporte: ", Metrics.calculate_support( c))
+        print("Confianza de la regla: ", Metrics.calculate_confidence( c))
+        print("Lift: ", Metrics.calculate_lift( c))
+        print("Instancias que 'cubre' la regla: ", Metrics.covered_by_rule( c))
+        print("Recov: ", Metrics.measure_recovered([c]))
+        print("Factor de certeza normalizado: ", Metrics.calculate_certainty_factor(c))
+        print('Fitness: ', Metrics.fitness(c))
         print('Resultado fitness a través de toolbox.evaluate: ',toolbox.evaluate(c))
 
 
@@ -87,7 +90,7 @@ def main():
 
     df = pd.DataFrame(data)
 
-    toolbox.register("dataset", Dataset, dataset=df)
+    #toolbox.register("dataset", Dataset, dataset=df)
     #Tests.dataset_test(toolbox)
     
     # Añadimos al toolbox el cromosoma y la poblacion formada por cromosomas
